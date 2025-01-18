@@ -98,7 +98,7 @@ class PresenceView(View):
 
     @nextcord.ui.button(label="FECHAR CURSO", style=nextcord.ButtonStyle.primary)
     async def close_course(self, button: Button, interaction: nextcord.Interaction):
-        role_id = 1323359921093345318  # Substitua pelo ID do cargo específico
+        role_id = 1317749321395081217  # Substitua pelo ID do cargo específico
         if role_id in [role.id for role in interaction.user.roles]:
             button.label = "CURSO FINALIZADO"
             button.disabled = True
@@ -112,7 +112,7 @@ class PresenceView(View):
 @bot.command(name='cursos')
 async def cursos(ctx):
     embed = nextcord.Embed(title=" 📢 CLIQUE NO BOTÃO ABAIXO PARA ANUNCIAR UMA AULA", description="Novo BOT de anunciar aulas: prático, rápido e eficiente para divulgar suas aulas com facilidade!")
-    view = CourseView(role_id=1323359921093345318)  # Substitua pelo ID do cargo específico
+    view = CourseView(role_id=1317749321395081217)  # Substitua pelo ID do cargo específico
     await ctx.send(embed=embed, view=view)
 
 
@@ -206,7 +206,7 @@ class ActionModal(Modal):
         view.add_item(close_action_button)
     
         # Send the embed to a different channel
-        target_channel_id = 1323359925681913981  # Replace with your target channel ID
+        target_channel_id = 1313350807730786334  # Replace with your target channel ID
         target_channel = bot.get_channel(target_channel_id)
         if target_channel:
             await target_channel.send(embed=embed, view=view)
@@ -214,12 +214,12 @@ class ActionModal(Modal):
             await interaction.response.send_message("O canal alvo não foi encontrado.", ephemeral=True)
 
 @bot.command(name="acao")
-@commands.has_role(1323359919814086704)  # Replace ROLE_ID with the actual role ID
+@commands.has_role(1317743871752671303)  # Replace ROLE_ID with the actual role ID
 async def acao(ctx):
     button = Button(label="Registrar Ação", style=ButtonStyle.green)
 
     async def button_callback(interaction: Interaction):
-        if 1323359919814086704 in [role.id for role in interaction.user.roles]:  # Replace ROLE_ID with the actual role ID
+        if 1317743871752671303 in [role.id for role in interaction.user.roles]:  # Replace ROLE_ID with the actual role ID
             modal = ActionModal()
             await interaction.response.send_modal(modal)
         else:
