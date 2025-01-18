@@ -42,7 +42,7 @@ class CourseView(View):
         super().__init__()
         self.role_id = role_id
 
-    @nextcord.ui.button(label="ANUNCIAR AULA", style=nextcord.ButtonStyle.primary)
+    @nextcord.ui.button(label="CRIAR AULA", style=nextcord.ButtonStyle.primary)
     async def announce_button(self, button: Button, interaction: nextcord.Interaction):
         if self.role_id in [role.id for role in interaction.user.roles]:
             modal = CourseModal(interaction.user)
@@ -51,7 +51,7 @@ class CourseView(View):
             await interaction.response.send_message("Você não tem permissão para usar este botão.", ephemeral=True)
 
 class AnnounceView(View):
-    @nextcord.ui.button(label="📢 ANUNCIAR AULA", style=nextcord.ButtonStyle.primary)
+    @nextcord.ui.button(label="📢 CRIAR AULA", style=nextcord.ButtonStyle.primary)
     async def announce_class(self, button: Button, interaction: nextcord.Interaction):
         embed = interaction.message.embeds[0]
         view = PresenceView()
@@ -111,7 +111,7 @@ class PresenceView(View):
 
 @bot.command(name='cursos')
 async def cursos(ctx):
-    embed = nextcord.Embed(title="Cursos", description="Descrição dos cursos disponíveis.")
+    embed = nextcord.Embed(title=" 📢 CLIQUE NO BOTÃO ABAIXO PARA ANUNCIAR UMA AULA", description="Novo BOT de anunciar aulas: prático, rápido e eficiente para divulgar suas aulas com facilidade!")
     view = CourseView(role_id=1323359921093345318)  # Substitua pelo ID do cargo específico
     await ctx.send(embed=embed, view=view)
 
