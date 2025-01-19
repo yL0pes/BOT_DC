@@ -115,7 +115,6 @@ async def cursos(ctx):
     view = CourseView(role_id=1317749321395081217)  # Substitua pelo ID do cargo específico
     await ctx.send(embed=embed, view=view)
 
-
 class ActionModal(Modal):
     def __init__(self):
         super().__init__(title="Registrar Ação")
