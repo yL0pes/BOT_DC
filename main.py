@@ -1,7 +1,7 @@
+from dotenv import load_dotenv
 import os
 import nextcord
 from nextcord.ext import commands
-from dotenv import load_dotenv
 
 load_dotenv()  # Carregar variáveis de ambiente do arquivo .env
 
@@ -18,8 +18,6 @@ async def on_ready():
 
 # Carregar o cog de ações
 bot.load_extension('acao')
-
-# Carregar o cog de aulas
-bot.load_extension('aulas')
+bot.load_extension('alunos')  # Load the alunos cog
 
 bot.run(TOKEN)
