@@ -13,11 +13,11 @@ class Acoes(commands.Cog):
             return
 
         embed = nextcord.Embed(
-            title="Título da Ação",
-            description="Descrição da ação.",
+            title="REGISTRO DE AÇÕES DO EXÉRCITO BRASILEIRO",
+            description=" - Lembre-se de utilizar apenas números para informar a quantidade de membros e o horário da ação. Unidos pela missão, prontos para a vitória!",
             color=nextcord.Color.blue()
         )
-        embed.set_footer(text="Footer da embed")
+        embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
 
         button = nextcord.ui.Button(label="REGISTRAR AÇÃO", style=nextcord.ButtonStyle.primary)
 
@@ -27,8 +27,9 @@ class Acoes(commands.Cog):
                 return
 
             class RegistrarAcaoModal(nextcord.ui.Modal):
-                def __init__(self):
+                def __init__(self, bot):
                     super().__init__(title="Registrar Ação")
+                    self.bot = bot
 
                     self.nome_acao = nextcord.ui.TextInput(label="NOME DA AÇÃO")
                     self.qtd_policias = nextcord.ui.TextInput(label="QUANTIDADE DE POLICIAS")
@@ -45,9 +46,9 @@ class Acoes(commands.Cog):
                         title=self.nome_acao.value,
                         color=nextcord.Color.dark_gray()
                     )
-                    embed.add_field(name="Quantidade de Policiais", value=self.qtd_policias.value, inline=True)
-                    embed.add_field(name="Nome da Facção", value=self.nome_faccao.value, inline=True)
-                    embed.add_field(name="Horário da Ação", value=self.horario_acao.value, inline=True)
+                    embed.add_field(name="👮‍♂️ QUANTIDADE DE POLICIAS", value=self.qtd_policias.value, inline=True)
+                    embed.add_field(name="⛔ NOME DA FACÇÃO", value=self.nome_faccao.value, inline=True)
+                    embed.add_field(name="⏲ HORÁRIO DA AÇÃO", value=self.horario_acao.value, inline=True)
 
                     marcar_presenca_button = nextcord.ui.Button(label="MARCAR PRESENÇA", style=nextcord.ButtonStyle.success)
                     retirar_presenca_button = nextcord.ui.Button(label="RETIRAR PRESENÇA", style=nextcord.ButtonStyle.danger)
@@ -56,18 +57,19 @@ class Acoes(commands.Cog):
                     async def marcar_presenca_callback(interaction):
                         user = interaction.user
                         presenca = f"{user.display_name} ({user.id}) 💎"
-                        if embed.fields[-1].name == "PRESENÇAS":
-                            embed.set_field_at(index=len(embed.fields) - 1, name="PRESENÇAS", value=embed.fields[-1].value + "\n" + presenca, inline=False)
+                        if embed.fields[-1].name == "📋 PRESENÇAS":
+                            if presenca not in embed.fields[-1].value:
+                                embed.set_field_at(index=len(embed.fields) - 1, name="📋 PRESENÇAS", value=embed.fields[-1].value + "\n" + presenca, inline=False)
                         else:
-                            embed.add_field(name="PRESENÇAS", value=presenca, inline=False)
+                            embed.add_field(name="📋 PRESENÇAS", value=presenca, inline=False)
                         await interaction.response.edit_message(embed=embed, view=view)
 
                     async def retirar_presenca_callback(interaction):
                         user = interaction.user
                         presenca = f"{user.display_name} ({user.id}) 💎"
-                        if embed.fields[-1].name == "PRESENÇAS":
+                        if embed.fields[-1].name == "📋 PRESENÇAS":
                             novas_presencas = "\n".join([p for p in embed.fields[-1].value.split("\n") if p != presenca])
-                            embed.set_field_at(index=len(embed.fields) - 1, name="PRESENÇAS", value=novas_presencas, inline=False)
+                            embed.set_field_at(index=len(embed.fields) - 1, name="📋 PRESENÇAS", value=novas_presencas, inline=False)
                         await interaction.response.edit_message(embed=embed, view=view)
 
                     async def fechar_inscricao_callback(interaction):
@@ -79,8 +81,8 @@ class Acoes(commands.Cog):
                         view.clear_items()
                         view.add_item(fechar_inscricao_button)
 
-                        vitoria_button = nextcord.ui.Button(label="VITÓRIA", style=nextcord.ButtonStyle.success)
-                        derrota_button = nextcord.ui.Button(label="DERROTA", style=nextcord.ButtonStyle.danger)
+                        vitoria_button = nextcord.ui.Button(label="💚 VITÓRIA", style=nextcord.ButtonStyle.success)
+                        derrota_button = nextcord.ui.Button(label="💥 DERROTA", style=nextcord.ButtonStyle.danger)
 
                         async def vitoria_callback(interaction):
                             if role_id not in [role.id for role in interaction.user.roles]:
@@ -94,7 +96,7 @@ class Acoes(commands.Cog):
                             if embed.fields[-1].name == "STATUS":
                                 embed.set_field_at(index=len(embed.fields) - 1, name="STATUS", value="AÇÃO GANHA", inline=False)
                             else:
-                                embed.add_field(name="STATUS", value="AÇÃO GANHA", inline=False)
+                                embed.add_field(name="🌐 STATUS", value="AÇÃO GANHA", inline=False)
                             await interaction.response.edit_message(embed=embed, view=view)
 
                         async def derrota_callback(interaction):
@@ -129,9 +131,14 @@ class Acoes(commands.Cog):
                     view.add_item(retirar_presenca_button)
                     view.add_item(fechar_inscricao_button)
 
-                    await interaction.response.send_message(embed=embed, view=view)
+                    canal_id = 1323359925681913981  # Substitua pelo ID do canal específico
+                    canal = self.bot.get_channel(canal_id)
+                    if canal is not None:
+                        await canal.send(embed=embed, view=view)
+                    else:
+                        await interaction.response.send_message("Canal não encontrado.", ephemeral=True)
 
-            modal = RegistrarAcaoModal()
+            modal = RegistrarAcaoModal(self.bot)
             await interaction.response.send_modal(modal)
 
         button.callback = button_callback
