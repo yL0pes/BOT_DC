@@ -7,6 +7,11 @@ class Acoes(commands.Cog):
 
     @commands.command()
     async def acao(self, ctx):
+        role_id = 1323359921093345318  # Substitua pelo ID do cargo específico
+        if role_id not in [role.id for role in ctx.author.roles]:
+            await ctx.send("Você não tem permissão para usar este comando.")
+            return
+
         embed = nextcord.Embed(
             title="Título da Ação",
             description="Descrição da ação.",
@@ -17,6 +22,10 @@ class Acoes(commands.Cog):
         button = nextcord.ui.Button(label="REGISTRAR AÇÃO", style=nextcord.ButtonStyle.primary)
 
         async def button_callback(interaction):
+            if role_id not in [role.id for role in interaction.user.roles]:
+                await interaction.response.send_message("Você não tem permissão para usar este botão.", ephemeral=True)
+                return
+
             class RegistrarAcaoModal(nextcord.ui.Modal):
                 def __init__(self):
                     super().__init__(title="Registrar Ação")
@@ -34,16 +43,91 @@ class Acoes(commands.Cog):
                 async def callback(self, interaction: nextcord.Interaction):
                     embed = nextcord.Embed(
                         title=self.nome_acao.value,
-                        description=f"**Quantidade de Policiais:** {self.qtd_policias.value}\n"
-                                    f"**Nome da Facção:** {self.nome_faccao.value}\n"
-                                    f"**Horário da Ação:** {self.horario_acao.value}",
                         color=nextcord.Color.dark_gray()
                     )
+                    embed.add_field(name="Quantidade de Policiais", value=self.qtd_policias.value, inline=True)
+                    embed.add_field(name="Nome da Facção", value=self.nome_faccao.value, inline=True)
+                    embed.add_field(name="Horário da Ação", value=self.horario_acao.value, inline=True)
 
                     marcar_presenca_button = nextcord.ui.Button(label="MARCAR PRESENÇA", style=nextcord.ButtonStyle.success)
+                    retirar_presenca_button = nextcord.ui.Button(label="RETIRAR PRESENÇA", style=nextcord.ButtonStyle.danger)
+                    fechar_inscricao_button = nextcord.ui.Button(label="FECHAR INSCRIÇÃO", style=nextcord.ButtonStyle.secondary)
 
-                    view = nextcord.ui.View()
+                    async def marcar_presenca_callback(interaction):
+                        user = interaction.user
+                        presenca = f"{user.display_name} ({user.id}) 💎"
+                        if embed.fields[-1].name == "PRESENÇAS":
+                            embed.set_field_at(index=len(embed.fields) - 1, name="PRESENÇAS", value=embed.fields[-1].value + "\n" + presenca, inline=False)
+                        else:
+                            embed.add_field(name="PRESENÇAS", value=presenca, inline=False)
+                        await interaction.response.edit_message(embed=embed, view=view)
+
+                    async def retirar_presenca_callback(interaction):
+                        user = interaction.user
+                        presenca = f"{user.display_name} ({user.id}) 💎"
+                        if embed.fields[-1].name == "PRESENÇAS":
+                            novas_presencas = "\n".join([p for p in embed.fields[-1].value.split("\n") if p != presenca])
+                            embed.set_field_at(index=len(embed.fields) - 1, name="PRESENÇAS", value=novas_presencas, inline=False)
+                        await interaction.response.edit_message(embed=embed, view=view)
+
+                    async def fechar_inscricao_callback(interaction):
+                        if role_id not in [role.id for role in interaction.user.roles]:
+                            await interaction.response.send_message("Você não tem permissão para usar este botão.", ephemeral=True)
+                            return
+                        fechar_inscricao_button.disabled = True
+                        fechar_inscricao_button.label = "AÇÃO FINALIZADA"
+                        view.clear_items()
+                        view.add_item(fechar_inscricao_button)
+
+                        vitoria_button = nextcord.ui.Button(label="VITÓRIA", style=nextcord.ButtonStyle.success)
+                        derrota_button = nextcord.ui.Button(label="DERROTA", style=nextcord.ButtonStyle.danger)
+
+                        async def vitoria_callback(interaction):
+                            if role_id not in [role.id for role in interaction.user.roles]:
+                                await interaction.response.send_message("Você não tem permissão para usar este botão.", ephemeral=True)
+                                return
+                            vitoria_button.disabled = True
+                            view.clear_items()
+                            view.add_item(fechar_inscricao_button)
+                            view.add_item(vitoria_button)
+                            embed.color = nextcord.Color.green()
+                            if embed.fields[-1].name == "STATUS":
+                                embed.set_field_at(index=len(embed.fields) - 1, name="STATUS", value="AÇÃO GANHA", inline=False)
+                            else:
+                                embed.add_field(name="STATUS", value="AÇÃO GANHA", inline=False)
+                            await interaction.response.edit_message(embed=embed, view=view)
+
+                        async def derrota_callback(interaction):
+                            if role_id not in [role.id for role in interaction.user.roles]:
+                                await interaction.response.send_message("Você não tem permissão para usar este botão.", ephemeral=True)
+                                return
+                            derrota_button.disabled = True
+                            view.clear_items()
+                            view.add_item(fechar_inscricao_button)
+                            view.add_item(derrota_button)
+                            embed.color = nextcord.Color.red()
+                            if embed.fields[-1].name == "STATUS":
+                                embed.set_field_at(index=len(embed.fields) - 1, name="STATUS", value="AÇÃO PERDIDA", inline=False)
+                            else:
+                                embed.add_field(name="STATUS", value="AÇÃO PERDIDA", inline=False)
+                            await interaction.response.edit_message(embed=embed, view=view)
+
+                        vitoria_button.callback = vitoria_callback
+                        derrota_button.callback = derrota_callback
+
+                        view.add_item(vitoria_button)
+                        view.add_item(derrota_button)
+
+                        await interaction.response.edit_message(view=view)
+
+                    marcar_presenca_button.callback = marcar_presenca_callback
+                    retirar_presenca_button.callback = retirar_presenca_callback
+                    fechar_inscricao_button.callback = fechar_inscricao_callback
+
+                    view = nextcord.ui.View(timeout=None)  # Set timeout to None to keep the view active indefinitely
                     view.add_item(marcar_presenca_button)
+                    view.add_item(retirar_presenca_button)
+                    view.add_item(fechar_inscricao_button)
 
                     await interaction.response.send_message(embed=embed, view=view)
 
@@ -52,7 +136,7 @@ class Acoes(commands.Cog):
 
         button.callback = button_callback
 
-        view = nextcord.ui.View()
+        view = nextcord.ui.View(timeout=None)  # Set timeout to None to keep the view active indefinitely
         view.add_item(button)
 
         await ctx.send(embed=embed, view=view)
