@@ -1,9 +1,10 @@
+import os
 import nextcord
 from nextcord.ext import commands
-import os
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv()  # Carregar variáveis de ambiente do arquivo .env
+
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 intents = nextcord.Intents.default()
@@ -17,5 +18,8 @@ async def on_ready():
 
 # Carregar o cog de ações
 bot.load_extension('acao')
+
+# Carregar o cog de aulas
+bot.load_extension('aulas')
 
 bot.run(TOKEN)
