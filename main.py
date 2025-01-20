@@ -16,8 +16,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_ready():
     print(f'Estamos logados como {bot.user}')
 
-# Carregar o cog de ações
+# Carregar os cogs
 bot.load_extension('acao')
-bot.load_extension('alunos')  # Load the alunos cog
+bot.load_extension('curso')
 
 bot.run(TOKEN)
