@@ -1,5 +1,6 @@
 from nextcord.ext import commands
 import nextcord
+import asyncio
 
 # IDs de cargos para os cursos
 CARGO_IDS = [
@@ -9,6 +10,8 @@ CARGO_IDS = [
     "1323359920338505833", "1323359920338505834", "1323359920338505835", "1323359920338505836", "1323359920338505837",
     "1323359920338505838", "1323359920338505839", "1323359920338505840", "1323359920338505841", "1323359920338505842"
 ]
+
+SPECIFIC_ROLE_ID = 123456789012345678  # Substitua pelo ID do cargo específico
 
 class CursoDropdown(nextcord.ui.Select):
     def __init__(self):
@@ -117,8 +120,27 @@ class RequestTagButton(nextcord.ui.Button):
         super().__init__(label="PEDIR TAG", style=nextcord.ButtonStyle.secondary)
 
     async def callback(self, interaction: nextcord.Interaction):
+        # Capturar e salvar os dados do usuário na memória do bot
         interaction.client.user_requesting_tag = interaction.user
+        print(f"Pedido de tag feito por: {interaction.user.display_name} ({interaction.user.id})")
+
+        # Criar uma nova embed com as informações do usuário e cursos feitos
+        embed = nextcord.Embed(title="Pedido de Tag", color=0xffff00)
+        embed.add_field(name="Usuário", value=f"{interaction.user.display_name} ({interaction.user.id})", inline=False)
+        embed.add_field(name="Cursos Feitos", value=", ".join([f"<@&{curso}>" for curso in interaction.message.embeds[0].fields[2].value.split(", ")]), inline=False)
+
+        # Enviar a nova embed para um canal específico
+        channel = interaction.guild.get_channel(1323359923131781212)  # Substitua pelo ID do seu canal
+        await channel.send(embed=embed)
+
         await interaction.response.send_message("Pedido de tag enviado!", ephemeral=True)
+
+class SetRoleButton(nextcord.ui.Button):
+    def __init__(self):
+        super().__init__(label="SETAR CARGO", style=nextcord.ButtonStyle.primary)
+
+    async def callback(self, interaction: nextcord.Interaction):
+        pass  # Nenhuma função definida ainda
 
 class AcceptButtonView(nextcord.ui.View):
     def __init__(self):
@@ -147,6 +169,7 @@ class FinalizeButtonView(nextcord.ui.View):
         super().__init__(timeout=None)
         self.add_item(FinalizeButton())
         self.add_item(RequestTagButton())
+        self.add_item(SetRoleButton())
 
     async def on_timeout(self):
         for item in self.children:
@@ -162,6 +185,20 @@ class Curso(commands.Cog):
     async def cursos(self, ctx):
         view = CursoDropdownView()
         await ctx.send("Escolha um curso:", view=view)
+
+    @commands.command(name='setar')
+    @commands.has_role(1323359920384512119)
+    async def setar(self, ctx, member: nextcord.Member, *roles: nextcord.Role):
+        for role in roles:
+            if role in member.roles:
+                await ctx.send(f"{member.mention} já possui o cargo {role.mention}.")
+            else:
+                await member.add_roles(role)
+                await ctx.send(f"Cargo {role.mention} atribuído a {member.mention}.")
+        await asyncio.sleep(2)
+        await ctx.message.delete()
+        await asyncio.sleep(2)
+        await ctx.channel.purge(limit=1)
 
 def setup(bot):
     bot.add_cog(Curso(bot))
