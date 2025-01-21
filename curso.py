@@ -58,6 +58,7 @@ class CursoDropdown(nextcord.ui.Select):
         selected_courses = self.values
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
+        await interaction.message.delete()
 
 class CursoDropdown2(nextcord.ui.Select):
     def __init__(self):
@@ -71,6 +72,7 @@ class CursoDropdown2(nextcord.ui.Select):
         selected_courses = self.values
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
+        await interaction.message.delete()
 
 class CursoDropdownView(nextcord.ui.View):
     def __init__(self):
@@ -353,7 +355,8 @@ class AnunciarDropdown(nextcord.ui.Select):
 class AnunciarDropdownView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.add_item(AnunciarDropdown())
+        self.add_item(CursoDropdown())
+        self.add_item(CursoDropdown2())
 
 class AnunciarModal(nextcord.ui.Modal):
     def __init__(self, cursos):
