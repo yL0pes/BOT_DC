@@ -44,7 +44,7 @@ CURSO_TITLES_2 = [
     "『📋』(CFT 2°) • Formação de 2° Tenente", "『📋』(CFT 1°) • Formação de 1° Tenente", 
 ]
 
-SPECIFIC_ROLE_ID = 1317749321395081217  # Substitua pelo ID do cargo específico
+SPECIFIC_ROLE_ID = 1323359921114447887  # Substitua pelo ID do cargo específico
 
 class CursoDropdown(nextcord.ui.Select):
     def __init__(self):
@@ -334,6 +334,51 @@ class FinalizeButtonView(nextcord.ui.View):
             item.disabled = True
         await self.message.edit(view=self)
 
+class AnunciarDropdown(nextcord.ui.Select):
+    def __init__(self):
+        options = [
+            nextcord.SelectOption(label=CURSO_TITLES[i], value=CARGO_IDS[i])
+            for i in range(len(CARGO_IDS))
+        ] + [
+            nextcord.SelectOption(label=CURSO_TITLES_2[i], value=CARGO_IDS_2[i])
+            for i in range(len(CARGO_IDS_2))
+        ]
+        super().__init__(placeholder="Escolha um ou mais cursos...", options=options, min_values=1, max_values=len(options))
+
+    async def callback(self, interaction: nextcord.Interaction):
+        selected_courses = self.values
+        modal = AnunciarModal(selected_courses)
+        await interaction.response.send_modal(modal)
+
+class AnunciarDropdownView(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(AnunciarDropdown())
+
+class AnunciarModal(nextcord.ui.Modal):
+    def __init__(self, cursos):
+        super().__init__(title="Anunciar Cursos")
+        self.cursos = cursos
+
+        self.mensagem = nextcord.ui.TextInput(
+            label="Mensagem",
+            placeholder="Insira a mensagem do anúncio",
+            required=True
+        )
+
+        self.add_item(self.mensagem)
+
+    async def callback(self, interaction: nextcord.Interaction):
+        embed = nextcord.Embed(title="Anúncio de Cursos", color=0x00ff00)
+        embed.add_field(name="Mensagem", value=self.mensagem.value, inline=False)
+        cursos_mention = ", ".join([f"<@&{curso}>" for curso in self.cursos])
+        embed.add_field(name="Cursos", value=cursos_mention, inline=False)
+        embed.add_field(name="Anunciado por", value=interaction.user.mention, inline=False)
+        
+        # Enviar a embed para um canal específico
+        channel = interaction.guild.get_channel(1330321000763752510)  # Substitua pelo ID do seu canal
+        await channel.send(embed=embed)
+
 class Curso(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -382,6 +427,22 @@ class Curso(commands.Cog):
 
     @setar.error
     async def setar_error(self, ctx, error):
+        if isinstance(error, commands.MissingRole):
+            try:
+                await ctx.author.send("Você não tem permissão para usar este comando.")
+            except nextcord.Forbidden:
+                await ctx.send(f"{ctx.author.mention}, você não tem permissão para usar este comando.", delete_after=2)
+            await asyncio.sleep(2)
+            await ctx.message.delete()
+
+    @commands.command(name='anunciar')
+    @commands.has_role(SPECIFIC_ROLE_ID)
+    async def anunciar(self, ctx):
+        view = AnunciarDropdownView()
+        await ctx.send("Selecione os cursos para anunciar:", view=view)
+
+    @anunciar.error
+    async def anunciar_error(self, ctx, error):
         if isinstance(error, commands.MissingRole):
             try:
                 await ctx.author.send("Você não tem permissão para usar este comando.")
