@@ -2,12 +2,12 @@ from nextcord.ext import commands
 import nextcord
 import asyncio
 
-LOG_CHANNEL_ID = 1265452627068456980  # Substitua pelo ID do canal de log
+LOG_CHANNEL_ID = 1331362298182500382  # Substitua pelo ID do canal de log
 INVALID_ROLE_EMOJI = "❌"  # Emoji de X (negativo)
 
 # IDs de cargos para os cursos
 CARGO_IDS = [
-    "1317745632898711572", "1317745806719058001", "1317748586980835328", "1317746273511673878", "1317745723034570793",
+    "1323359920338505823", "1317745806719058001", "1317748586980835328", "1317746273511673878", "1317745723034570793",
     "1317745913678139482", "1317746167198777404", "1317748467761676341", "1317746069781745694", "1317750633117253632",
     "1317750155793137684", "1317748868078768138", "1317750048380944446", "1317750393140281415", "1317750498320711680",
     "1317749086249549824", "1317748977483120680", "1317750263368646706", "1317749209176342558", "1317742810136580096",
@@ -27,6 +27,23 @@ CURSO_TITLES = [
     "『 💰• Curso』Banco Paleto",
 ]
 
+# IDs de cargos para as opções do segundo dropdown
+CARGO_IDS_2 = [
+    "1317741593679368193", "1317741472623104102", "1317741341463023666", "1317748735673106452", "1318741264660828210",
+    "1317751204888969226", "1326562192132280393", "1317747961190547526", "1317747372402671626", "1317747695905013760",
+    "1317747068118503474", "1317746949360844840", "1317746854267457547", "1317746735103082567", "1317746528672157807",
+    "1317742940042297444"
+]
+
+# Títulos personalizados para as opções do segundo dropdown
+CURSO_TITLES_2 = [
+    "『 ✈ • Licença 』• Piloto Águia", "『🚔 • Curso 』• Piloto Speed", "『🏍 • Curso 』• Piloto GTM", "『 📖 』Curso Recrutador", 
+    "💼 • CURSO JUDICIÁRIO - CÓDIGO PENAL", "『 🔫• 』Ammunation", "『 🛒• 』Lojinhas", "『 📋 』(CFSd) • Formação de Soldado",
+    "『📋』(CFC) • Formação de Cabo", "『📋』(CFS • 3°) • Formação de 3° Sargento", "『📋』(CFS • 2°) • Formação de 2° Sargento", 
+    "『📋』(CFS • 1°) • Formação de 1° Sargento", "『📋』(CFA) • Formação de Aspirante a Oficial", "『📋』(CFSt) • Formação de SubTenente",
+    "『📋』(CFT 2°) • Formação de 2° Tenente", "『📋』(CFT 1°) • Formação de 1° Tenente", 
+]
+
 SPECIFIC_ROLE_ID = 1317749321395081217  # Substitua pelo ID do cargo específico
 
 class CursoDropdown(nextcord.ui.Select):
@@ -42,10 +59,24 @@ class CursoDropdown(nextcord.ui.Select):
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
 
+class CursoDropdown2(nextcord.ui.Select):
+    def __init__(self):
+        options = [
+            nextcord.SelectOption(label=CURSO_TITLES_2[i], value=CARGO_IDS_2[i])
+            for i in range(len(CARGO_IDS_2))
+        ]
+        super().__init__(placeholder="Escolha uma opção...", options=options, min_values=1, max_values=len(options))
+
+    async def callback(self, interaction: nextcord.Interaction):
+        selected_courses = self.values
+        modal = CursoModal(selected_courses)
+        await interaction.response.send_modal(modal)
+
 class CursoDropdownView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
         self.add_item(CursoDropdown())
+        self.add_item(CursoDropdown2())
 
 class CursoModal(nextcord.ui.Modal):
     def __init__(self, cursos):
@@ -74,6 +105,7 @@ class CursoModal(nextcord.ui.Modal):
         embed.add_field(name="Cursos Selecionados", value=cursos_mention, inline=False)
         embed.add_field(name="INSTRUTOR RESPONSÁVEL", value="A ser definido", inline=False)
         embed.add_field(name="Alunos", value="Sem presenças marcadas", inline=False)
+        embed.add_field(name="QUEM SOLICITOU", value=interaction.user.mention, inline=False)
         
         # Enviar a embed para um canal diferente junto com os botões ACEITAR CURSO e NEGAR CURSO
         view = AcceptButtonView()
@@ -97,14 +129,17 @@ class AcceptButton(nextcord.ui.Button):
 
         # Log the acceptance
         log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
-        message_url = f"https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{interaction.message.id}"
-        log_message = (
-            f"**Instrutor que aceitou o curso:** {interaction.user.mention}\n"
-            f"**Curso aceito:** {embed.fields[2].value}\n"
-            f"**Alunos:** {embed.fields[4].value}\n"
-            f"[Link da mensagem]({message_url})"
-        )
-        await log_channel.send(log_message)
+        if log_channel:
+            message_url = f"https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{interaction.message.id}"
+            log_message = (
+                f"**Instrutor que aceitou o curso:** {interaction.user.mention}\n"
+                f"**Curso aceito:** {embed.fields[2].value}\n"
+                f"**Alunos:** {embed.fields[4].value}\n"
+                f"[Link da mensagem]({message_url})"
+            )
+            await log_channel.send(log_message)
+        else:
+            print(f"Erro: Canal de log com ID {LOG_CHANNEL_ID} não encontrado.")
 
 class DenyButton(nextcord.ui.Button):
     def __init__(self):
@@ -131,6 +166,11 @@ class DenyReasonModal(nextcord.ui.Modal):
     async def callback(self, interaction: nextcord.Interaction):
         embed = interaction.message.embeds[0]
         embed.add_field(name="Motivo da Negação", value=self.reason.value, inline=False)
+        
+        # Preencher o campo "INSTRUTOR RESPONSÁVEL" com o nome do usuário que negou o curso
+        if embed.fields[3].value == "A ser definido":
+            embed.set_field_at(3, name="INSTRUTOR RESPONSÁVEL", value=interaction.user.display_name, inline=False)
+        
         view = AcceptButtonView()
         view.clear_items()
         view.add_item(DenyButton())
@@ -141,13 +181,16 @@ class DenyReasonModal(nextcord.ui.Modal):
 
         # Log the denial
         log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
-        message_url = f"https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{interaction.message.id}"
-        log_message = (
-            f"**Instrutor que negou o curso:** {interaction.user.mention}\n"
-            f"**Motivo de negar o curso:** {self.reason.value}\n"
-            f"[Link da mensagem]({message_url})"
-        )
-        await log_channel.send(log_message)
+        if log_channel:
+            message_url = f"https://discord.com/channels/{interaction.guild.id}/{interaction.channel.id}/{interaction.message.id}"
+            log_message = (
+                f"**Instrutor que negou o curso:** {interaction.user.mention}\n"
+                f"**Motivo de negar o curso:** {self.reason.value}\n"
+                f"[Link da mensagem]({message_url})"
+            )
+            await log_channel.send(log_message)
+        else:
+            print(f"Erro: Canal de log com ID {LOG_CHANNEL_ID} não encontrado.")
 
 class MarkPresenceButton(nextcord.ui.Button):
     def __init__(self):
@@ -156,9 +199,9 @@ class MarkPresenceButton(nextcord.ui.Button):
     async def callback(self, interaction: nextcord.Interaction):
         embed = interaction.message.embeds[0]
         if "Sem presenças marcadas" in embed.fields[4].value:
-            embed.set_field_at(4, name="Alunos", value=interaction.user.display_name, inline=False)
-        elif interaction.user.display_name not in embed.fields[4].value:
-            embed.set_field_at(4, name="Alunos", value=embed.fields[4].value + f"\n{interaction.user.display_name}", inline=False)
+            embed.set_field_at(4, name="Alunos", value=interaction.user.mention, inline=False)
+        elif interaction.user.mention not in embed.fields[4].value:
+            embed.set_field_at(4, name="Alunos", value=embed.fields[4].value + f"\n{interaction.user.mention}", inline=False)
         await interaction.response.edit_message(embed=embed, view=PresenceButtonView())
 
 class RemovePresenceButton(nextcord.ui.Button):
@@ -168,8 +211,8 @@ class RemovePresenceButton(nextcord.ui.Button):
     async def callback(self, interaction: nextcord.Interaction):
         embed = interaction.message.embeds[0]
         alunos = embed.fields[4].value.split("\n")
-        if interaction.user.display_name in alunos:
-            alunos.remove(interaction.user.display_name)
+        if interaction.user.mention in alunos:
+            alunos.remove(interaction.user.mention)
             if alunos:
                 embed.set_field_at(4, name="Alunos", value="\n".join(alunos), inline=False)
             else:
@@ -204,14 +247,50 @@ class RequestTagButton(nextcord.ui.Button):
 
         # Criar uma nova embed com as informações do usuário e cursos feitos
         embed = nextcord.Embed(title="Pedido de Tag", color=0xffff00)
-        embed.add_field(name="Usuário", value=f"{interaction.user.display_name} ({interaction.user.id})", inline=False)
+        embed.add_field(name="Usuário", value=f"{interaction.user.mention}", inline=False)
         embed.add_field(name="Cursos Feitos", value=", ".join([f"<@&{curso}>" for curso in interaction.message.embeds[0].fields[2].value.split(", ")]), inline=False)
 
         # Enviar a nova embed para um canal específico
         channel = interaction.guild.get_channel(1306026420509737010)  # Substitua pelo ID do seu canal
-        await channel.send(embed=embed)
+        message = await channel.send(embed=embed)
 
-        await interaction.response.send_message("Pedido de tag enviado!", ephemeral=True)
+        # Adicionar uma reação à mensagem
+        await message.add_reaction("✅")
+
+        # Esperar por uma reação de um usuário com o cargo específico
+        def check(reaction, user):
+            return (
+                reaction.message.id == message.id
+                and str(reaction.emoji) == "✅"
+                and SPECIFIC_ROLE_ID in [role.id for role in user.roles]
+            )
+
+        try:
+            reaction, user = await interaction.client.wait_for("reaction_add", timeout=600.0, check=check)
+        except asyncio.TimeoutError:
+            await channel.send("Tempo esgotado para a reação.", delete_after=10)
+        else:
+            # Atribuir todos os cargos mencionados ao usuário
+            user_requesting_tag = interaction.client.user_requesting_tag
+            role_ids = [int(curso.strip('<@&>')) for curso in embed.fields[1].value.split(", ")]
+            roles = [interaction.guild.get_role(role_id) for role_id in role_ids]
+            for role in roles:
+                if role:
+                    await user_requesting_tag.add_roles(role)
+
+            await channel.send(f"Pedido de tag aprovado por {user.mention} e cargos atribuídos a {user_requesting_tag.mention}!", delete_after=10)
+
+            # Log the situation
+            log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                log_message = (
+                    f"**Instrutor responsável:** {user.mention}\n"
+                    f"**Aluno:** {user_requesting_tag.mention}\n"
+                    f"**Cursos feitos:** {embed.fields[1].value}"
+                )
+                await log_channel.send(log_message)
+            else:
+                print(f"Erro: Canal de log com ID {LOG_CHANNEL_ID} não encontrado.")
 
 class SetRoleButton(nextcord.ui.Button):
     def __init__(self):
@@ -268,7 +347,7 @@ class Curso(commands.Cog):
         await ctx.send(embed=embed, view=view)
 
     @commands.command(name='setar')
-    @commands.has_role(1323359920384512119)
+    @commands.has_role(1317749321395081217)
     async def setar(self, ctx, *args):
         members = [member for member in ctx.message.mentions if isinstance(member, nextcord.Member)]
         roles = [role for role in ctx.message.role_mentions if isinstance(role, nextcord.Role)]
