@@ -7,7 +7,7 @@ INVALID_ROLE_EMOJI = "❌"  # Emoji de X (negativo)
 
 # IDs de cargos para os cursos
 CARGO_IDS = [
-    "1323359920338505823", "1317745806719058001", "1317748586980835328", "1317746273511673878", "1317745723034570793",
+    "1317745632898711572", "1317745806719058001", "1317748586980835328", "1317746273511673878", "1317745723034570793",
     "1317745913678139482", "1317746167198777404", "1317748467761676341", "1317746069781745694", "1317750633117253632",
     "1317750155793137684", "1317748868078768138", "1317750048380944446", "1317750393140281415", "1317750498320711680",
     "1317749086249549824", "1317748977483120680", "1317750263368646706", "1317749209176342558", "1317742810136580096",
@@ -44,7 +44,7 @@ CURSO_TITLES_2 = [
     "『📋』(CFT 2°) • Formação de 2° Tenente", "『📋』(CFT 1°) • Formação de 1° Tenente", 
 ]
 
-SPECIFIC_ROLE_ID = 1323359921114447887  # Substitua pelo ID do cargo específico
+SPECIFIC_ROLE_ID = 1317749321395081217  # Substitua pelo ID do cargo específico
 
 class CursoDropdown(nextcord.ui.Select):
     def __init__(self):
@@ -105,7 +105,7 @@ class CursoModal(nextcord.ui.Modal):
         embed.add_field(name="Horário", value=self.horario.value, inline=False)
         cursos_mention = ", ".join([f"<@&{curso}>" for curso in self.cursos])
         embed.add_field(name="Cursos Selecionados", value=cursos_mention, inline=False)
-        embed.add_field(name="INSTRUTOR RESPONSÁVEL", value="A ser definido", inline=False)
+        embed.add_field(name="INSTRUTOR RESPONSÁVEL", value=interaction.user.display_name, inline=False)
         embed.add_field(name="Alunos", value="Sem presenças marcadas", inline=False)
         embed.add_field(name="QUEM SOLICITOU", value=interaction.user.mention, inline=False)
         
@@ -443,6 +443,8 @@ class Curso(commands.Cog):
     async def anunciar(self, ctx):
         view = AnunciarDropdownView()
         await ctx.send("Selecione os cursos para anunciar:", view=view)
+        await asyncio.sleep(1)
+        await ctx.message.delete()
 
     @anunciar.error
     async def anunciar_error(self, ctx, error):
