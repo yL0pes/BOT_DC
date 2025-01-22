@@ -58,7 +58,6 @@ class CursoDropdown(nextcord.ui.Select):
         selected_courses = self.values
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
-        await interaction.message.delete()
 
 class CursoDropdown2(nextcord.ui.Select):
     def __init__(self):
@@ -72,11 +71,19 @@ class CursoDropdown2(nextcord.ui.Select):
         selected_courses = self.values
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
-        await interaction.message.delete()
+
+class ResetButton(nextcord.ui.Button):
+    def __init__(self):
+        super().__init__(label="RESETAR ESCOLHAS 🔃", style=nextcord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: nextcord.Interaction):
+        view = AnunciarDropdownView()
+        await interaction.response.edit_message(view=view)
 
 class CursoDropdownView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.add_item(ResetButton())
         self.add_item(CursoDropdown())
         self.add_item(CursoDropdown2())
 
@@ -355,6 +362,7 @@ class AnunciarDropdown(nextcord.ui.Select):
 class AnunciarDropdownView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
+        self.add_item(ResetButton())
         self.add_item(CursoDropdown())
         self.add_item(CursoDropdown2())
 
