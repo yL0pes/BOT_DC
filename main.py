@@ -17,7 +17,8 @@ async def on_ready():
     print(f'Estamos logados como {bot.user}')
 
 # Carregar os cogs
-bot.load_extension('acao')
+bot.load_extension('acao') # Adicione esta linha para carregar o acao.py
 bot.load_extension('curso')
+bot.load_extension('upamento')  # Adicione esta linha para carregar o upamento.py
 
-bot.run(TOKEN)
+bot.run(TOKEN)  
