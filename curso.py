@@ -45,6 +45,7 @@ CURSO_TITLES_2 = [
 ]
 
 SPECIFIC_ROLE_ID = 1317749321395081217  # Substitua pelo ID do cargo específico
+BLOCKED_ROLE_ID = 1261742582736621598  # Substitua pelo ID do cargo que bloqueia o uso dos comandos
 
 class CursoDropdown(nextcord.ui.Select):
     def __init__(self):
@@ -55,6 +56,9 @@ class CursoDropdown(nextcord.ui.Select):
         super().__init__(placeholder="Escolha um curso...", options=options, min_values=1, max_values=len(options))
 
     async def callback(self, interaction: nextcord.Interaction):
+        if BLOCKED_ROLE_ID in [role.id for role in interaction.user.roles]:
+            await interaction.response.send_message("Você não tem permissão para usar este comando.", ephemeral=True)
+            return
         selected_courses = self.values
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
@@ -68,6 +72,9 @@ class CursoDropdown2(nextcord.ui.Select):
         super().__init__(placeholder="Escolha uma opção...", options=options, min_values=1, max_values=len(options))
 
     async def callback(self, interaction: nextcord.Interaction):
+        if BLOCKED_ROLE_ID in [role.id for role in interaction.user.roles]:
+            await interaction.response.send_message("Você não tem permissão para usar este comando.", ephemeral=True)
+            return
         selected_courses = self.values
         modal = CursoModal(selected_courses)
         await interaction.response.send_modal(modal)
@@ -355,6 +362,9 @@ class AnunciarDropdown(nextcord.ui.Select):
         super().__init__(placeholder="Escolha um ou mais cursos...", options=options, min_values=1, max_values=len(options))
 
     async def callback(self, interaction: nextcord.Interaction):
+        if BLOCKED_ROLE_ID in [role.id for role in interaction.user.roles]:
+            await interaction.response.send_message("Você não tem permissão para usar este comando.", ephemeral=True)
+            return
         selected_courses = self.values
         modal = AnunciarModal(selected_courses)
         await interaction.response.send_modal(modal)
@@ -397,6 +407,9 @@ class Curso(commands.Cog):
 
     @commands.command(name='cursos')
     async def cursos(self, ctx):
+        if BLOCKED_ROLE_ID in [role.id for role in ctx.author.roles]:
+            await ctx.send("Você não tem permissão para usar este comando.", delete_after=5)
+            return
         embed = nextcord.Embed(title="Escolha um curso", description=" - Novo BOT de solicitar aulas! Escolha um curso na lista abaixo e aguarde um Instrutor aceitar o seu Curso.", color=0xffff00)
         embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼 ")
         view = CursoDropdownView()
@@ -449,6 +462,9 @@ class Curso(commands.Cog):
     @commands.command(name='anunciar')
     @commands.has_role(SPECIFIC_ROLE_ID)
     async def anunciar(self, ctx):
+        if BLOCKED_ROLE_ID in [role.id for role in ctx.author.roles]:
+            await ctx.send("Você não tem permissão para usar este comando.", delete_after=5)
+            return
         view = AnunciarDropdownView()
         await ctx.send("Selecione os cursos para anunciar:", view=view)
         await asyncio.sleep(1)
