@@ -56,6 +56,7 @@ def run_bot1():
     bot1.load_extension('acao')  # Adicione esta linha para carregar o acao.py
     bot1.load_extension('curso')
     bot1.load_extension('carteira')  # Adicione esta linha para carregar o upamento.py
+    bot1.load_extension('anunciar')  # Adicione esta linha para carregar o anunciar.py
 
     bot1.run(TOKEN1)
 
@@ -163,6 +164,7 @@ def run_bot2():
     bot2.load_extension('registro')
     bot2.load_extension('curso')
     bot2.load_extension('carteira')
+    bot2.load_extension('anunciar')  # Adicione esta linha para carregar o anunciar.py
 
     bot2.run(TOKEN2)
 

@@ -119,7 +119,7 @@ class CursoModal(nextcord.ui.Modal):
         embed.add_field(name="Horário", value=self.horario.value, inline=False)
         cursos_mention = ", ".join([f"<@&{curso}>" for curso in self.cursos])
         embed.add_field(name="Cursos Selecionados", value=cursos_mention, inline=False)
-        embed.add_field(name="INSTRUTOR RESPONSÁVEL", value=interaction.user.display_name, inline=False)
+        embed.add_field(name="INSTRUTOR RESPONSÁVEL", value="A ser definido", inline=False)  # Change this line
         embed.add_field(name="Alunos", value="Sem presenças marcadas", inline=False)
         embed.add_field(name="QUEM SOLICITOU", value=interaction.user.mention, inline=False)
         
@@ -452,27 +452,6 @@ class Curso(commands.Cog):
 
     @setar.error
     async def setar_error(self, ctx, error):
-        if isinstance(error, commands.MissingRole):
-            try:
-                await ctx.author.send("Você não tem permissão para usar este comando.")
-            except nextcord.Forbidden:
-                await ctx.send(f"{ctx.author.mention}, você não tem permissão para usar este comando.", delete_after=2)
-            await asyncio.sleep(2)
-            await ctx.message.delete()
-
-    @commands.command(name='anunciar')
-    @commands.has_role(SPECIFIC_ROLE_ID)
-    async def anunciar(self, ctx):
-        if BLOCKED_ROLE_ID in [role.id for role in ctx.author.roles]:
-            await ctx.send("Você não tem permissão para usar este comando.", delete_after=5)
-            return
-        view = AnunciarDropdownView()
-        await ctx.send("Selecione os cursos para anunciar:", view=view)
-        await asyncio.sleep(1)
-        await ctx.message.delete()
-
-    @anunciar.error
-    async def anunciar_error(self, ctx, error):
         if isinstance(error, commands.MissingRole):
             try:
                 await ctx.author.send("Você não tem permissão para usar este comando.")
