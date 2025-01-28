@@ -7,7 +7,7 @@ class Acoes(commands.Cog):
 
     @commands.command()
     async def acao(self, ctx):
-        role_id = 1323359921093345318  # Substitua pelo ID do cargo específico
+        role_id = 1259679044161765508  # Substitua pelo ID do cargo específico
         if role_id not in [role.id for role in ctx.author.roles]:
             await ctx.send("Você não tem permissão para usar este comando.")
             return
@@ -131,7 +131,7 @@ class Acoes(commands.Cog):
                     view.add_item(retirar_presenca_button)
                     view.add_item(fechar_inscricao_button)
 
-                    canal_id = 1323359925681913981  # Substitua pelo ID do canal específico
+                    canal_id = 1313350807730786334  # Substitua pelo ID do canal específico
                     canal = self.bot.get_channel(canal_id)
                     if canal is not None:
                         await canal.send(embed=embed, view=view)

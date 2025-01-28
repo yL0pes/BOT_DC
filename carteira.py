@@ -5,8 +5,8 @@ from datetime import datetime, timedelta
 import aiohttp
 import io  # Adicione esta linha para importar o módulo io
 
-SPECIFIC_ROLE_ID = 1323359921114447887  # Substitua pelo ID do cargo específico
-LOG_CHANNEL_ID = 1323359927166701622  # Substitua pelo ID do canal de logs
+SPECIFIC_ROLE_ID = 1317749321395081217  # Substitua pelo ID do cargo específico
+LOG_CHANNEL_ID = 1331362298182500382  # Substitua pelo ID do canal de logs
 
 class FormModal(nextcord.ui.Modal):
     def __init__(self, title, channel_id):
@@ -102,11 +102,11 @@ class FormDropdown(nextcord.ui.Select):
 
     async def callback(self, interaction: nextcord.Interaction):
         if self.values[0] == "speed":
-            modal = FormModal("Carteira SPEED", 1323359923559465088)  # Substitua pelo ID do canal SPEED
+            modal = FormModal("Carteira SPEED", 1306027056332804238)  # Substitua pelo ID do canal SPEED
         elif self.values[0] == "gtm":
-            modal = FormModal("Carteira GTM", 1323359923559465089)  # Substitua pelo ID do canal GTM
+            modal = FormModal("Carteira GTM", 1306027107897311302)  # Substitua pelo ID do canal GTM
         else:
-            modal = FormModal("Carteira ÁGUIA", 1332380388638724117)  # Substitua pelo ID do canal ÁGUIA
+            modal = FormModal("Carteira ÁGUIA", 1332153186181578793)  # Substitua pelo ID do canal ÁGUIA
         await interaction.response.send_modal(modal)
 
 class FormView(nextcord.ui.View):
@@ -135,6 +135,7 @@ class Teste(commands.Cog):
         view = FormView()
         message = await ctx.send(embed=embed, view=view)
         view.message = message  # Salve a mensagem na View para poder editá-la mais tarde
+        await ctx.message.delete()
 
     @form.error
     async def form_error(self, ctx, error):

@@ -19,9 +19,9 @@ async def on_ready():
     print(f'Estamos logados como {bot.user}')
     
     # IDs dos canais
-    verificacao_channel_id = 1333487353511149648
-    registro_channel_id = 1333469693809524834
-    transfer_channel_id = 1333501348737585202
+    verificacao_channel_id = 1315844202856321134
+    registro_channel_id = 1333549238671380570
+    transfer_channel_id = 1333549260704321617
 
     # Apagar mensagens antigas e enviar as embeds respectivas para cada canal
     for channel_id in [verificacao_channel_id, registro_channel_id, transfer_channel_id]:

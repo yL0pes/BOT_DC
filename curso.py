@@ -414,6 +414,7 @@ class Curso(commands.Cog):
         embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼 ")
         view = CursoDropdownView()
         await ctx.send(embed=embed, view=view)
+        await ctx.message.delete()
 
     @commands.command(name='setar')
     @commands.has_role(1317749321395081217)
