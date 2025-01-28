@@ -55,7 +55,6 @@ async def resend_commands():
 bot.load_extension('acao') # Adicione esta linha para carregar o acao.py
 bot.load_extension('curso')
 bot.load_extension('carteira')  # Adicione esta linha para carregar o upamento.py
-
 bot.load_extension('divisoes')  # Adicione esta linha para carregar o divisoes.py
 
 bot.run(TOKEN)
