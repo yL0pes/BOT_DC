@@ -3,6 +3,8 @@ from nextcord.ext import commands
 import os
 from dotenv import load_dotenv
 
+from carteira import FormView
+
 load_dotenv()  # Carregar variáveis de ambiente do arquivo .env
 
 TOKEN = os.getenv('DISCORD_TOKEN2')
@@ -82,6 +84,8 @@ async def on_ready():
         view.add_item(select)
         await transfer_channel.send(embed=embed, view=view)
 
+    await resend_commands(bot)
+
 @bot.event
 async def on_message(message):
     # Apagar o comando que foi feito com o prefixo e deixar somente a embed
@@ -91,9 +95,25 @@ async def on_message(message):
     else:
         await bot.process_commands(message)
 
+async def resend_commands(bot):
+    # IDs dos canais específicos
+    form_channel_id = 1332103347657904139  # Substitua pelo ID do canal de formulários
+
+    form_channel = bot.get_channel(form_channel_id)
+
+    if form_channel:
+        await form_channel.purge(limit=100)
+        embed = nextcord.Embed(
+            title="Escolha a carteira que quer enviar",
+            description="Escolha uma das opções abaixo para abrir o formulário correspondente.",
+            color=0x00ff00
+        )
+        embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+        view = FormView()
+        await form_channel.send(embed=embed, view=view)
+
 # Carregar os cogs
 bot.load_extension('setagem')
 bot.load_extension('verificacao')
 bot.load_extension('registro')
-
-bot.run(TOKEN)
+bot.load_extension('teste')  # Certifique-se de carregar o cog 'teste'

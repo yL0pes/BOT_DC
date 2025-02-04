@@ -123,6 +123,10 @@ class Teste(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    async def form_callback(self, interaction: nextcord.Interaction):
+        # Implementação do callback do formulário
+        pass
+
     @commands.command(name='form')
     @commands.has_role(SPECIFIC_ROLE_ID)
     async def form(self, ctx):

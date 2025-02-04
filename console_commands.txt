@@ -1,0 +1,61 @@
+Comandos do Console da Host:
+
+1. restart
+   - Reinicia os bots.
+
+2. status
+   - Mostra o status dos bots.
+
+3. load_cog [cog_name]
+   - Carrega um cog específico.
+
+4. unload_cog [cog_name]
+   - Descarrega um cog específico.
+
+5. reload_cog [cog_name]
+   - Recarrega um cog específico.
+
+6. send_message [channel_id] [message]
+   - Envia uma mensagem para um canal específico.
+
+7. purge_channel [channel_id]
+   - Apaga todas as mensagens de um canal específico.
+
+8. list_cogs
+   - Lista todos os cogs carregados.
+
+9. shutdown
+   - Desliga os bots.
+
+10. schedule_restart [hours]
+    - Agenda uma reinicialização dos bots em um intervalo de horas específico.
+
+11. cancel_scheduled_restarts
+    - Cancela todas as reinicializações agendadas.
+
+12. list_channels
+    - Lista todos os canais do servidor.
+
+13. list_roles
+    - Lista todos os cargos do servidor.
+
+14. add_role [user_id] [role_id]
+    - Adiciona um cargo a um usuário específico.
+
+15. remove_role [user_id] [role_id]
+    - Remove um cargo de um usuário específico.
+
+16. kick_user [user_id]
+    - Expulsa um usuário específico do servidor.
+
+17. ban_user [user_id]
+    - Bane um usuário específico do servidor.
+
+18. unban_user [user_id]
+    - Desbane um usuário específico do servidor.
+
+19. list_banned_users
+    - Lista todos os usuários banidos do servidor.
+
+20. help
+    - Mostra a lista de comandos disponíveis.
