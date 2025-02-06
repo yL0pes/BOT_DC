@@ -6,6 +6,7 @@ from multiprocessing import Process
 import schedule
 import time
 import cmd
+import asyncio
 
 from carteira import FormView
 from curso import CursoDropdownView
@@ -83,6 +84,70 @@ async def resend_commands_divisoes(bot):
         view = FormView()
         await form_channel.send(embed=embed, view=view)
 
+thumbnail_url = None
+footer_icon_url = None
+
+async def upload_images(channel):
+    global thumbnail_url, footer_icon_url
+
+    if thumbnail_url is None or footer_icon_url is None:
+        thumbnail_file = nextcord.File("img/EXERCITO_BRASILEIRO.gif", filename="EXERCITO_BRASILEIRO.gif")
+        footer_icon_file = nextcord.File("img/MEDALHA.png", filename="MEDALHA.png")
+
+        thumbnail_message = await channel.send(file=thumbnail_file)
+        footer_icon_message = await channel.send(file=footer_icon_file)
+
+        thumbnail_url = thumbnail_message.attachments[0].url
+        footer_icon_url = footer_icon_message.attachments[0].url
+
+        await thumbnail_message.delete()
+        await footer_icon_message.delete()
+
+async def update_hierarchy_embed(bot):
+    channel_id = 1315844896292212828  # Replace with your specific channel ID
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        print(f"Channel with ID {channel_id} not found.")
+        return
+
+    role_ids = {
+        1315846193158291456: "🐆 Centro de Instrução de Guerra na Selva",
+        1315846202922766336: "🚁 Força Aérea Brasileira",
+        1315846679139713075: "💀 Divisão dos Comandos",
+        1315846201572069477: "🕵️ Centro de Inteligência do Exército",
+        1315846206475206766: "🎖️ Batalhão de Forças Especiais",
+        1315846764699582534: "👮‍♂️ Polícia do Exército",
+        1326541410773635145: "⚡ Força Speed Tática"
+    }  # Replace with your specific role IDs and emojis
+    guild = bot.guilds[0]  # Assuming the bot is in only one guild
+
+    embed = nextcord.Embed(
+        title="DIVISÕES DO EXÉRCITO BRASILEIRO",
+        description="Atualizado automaticamente a cada 30 minutos.",
+        color=nextcord.Color.green()
+    )
+    embed.set_thumbnail(url="https://media.discordapp.net/attachments/1315837031846510615/1337173243731120242/EXERCITO_BRASILEIRO.gif?ex=67a67b20&is=67a529a0&hm=9511ee8285c1664c39487a981f73c7dbfc8f1c8c1c567e3ebdb55db28b1cc477&=")  # Replace with your thumbnail URL
+    embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼", icon_url="https://media.discordapp.net/attachments/1315837031846510615/1337173243009695887/MEDALHA.png?ex=67a67b20&is=67a529a0&hm=bc89d25e10b6e1bced214a7fe8d1dc8dfa8bf00b2af0b16f887cd6926fffb4aa&=&format=webp&quality=lossless&width=644&height=644")  # Replace with your footer icon URL
+    embed.set_author(name="Exército Brasileiro", icon_url="https://images-ext-1.discordapp.net/external/Xbl2tsWF7Uik6thCxWZuG-J-NWLuRow3NtM8PDwx75o/%3Fsize%3D4096/https/cdn.discordapp.com/icons/1315835915637096519/8b741f445cce536655560c41a783fbf9.png?format=webp&quality=lossless")  # Replace with your author icon URL
+
+    for role_id, role_name in role_ids.items():
+        role = guild.get_role(role_id)
+        if role:
+            members = "\n".join([member.mention for member in role.members])
+            embed.add_field(name=role_name, value=members if members else "Nenhum membro", inline=False)
+
+    # Delete previous embed messages
+    async for message in channel.history(limit=10):
+        if message.author == bot.user and message.embeds:
+            await message.delete()
+
+    await channel.send(embed=embed)
+
+async def schedule_hierarchy_updates(bot):
+    while True:
+        await update_hierarchy_embed(bot)
+        await asyncio.sleep(1800)  # 30 minutes
+
 def run_bot1():
     bot1 = commands.Bot(command_prefix="!", intents=intents1)
 
@@ -90,6 +155,7 @@ def run_bot1():
     async def on_ready():
         print(f'Bot 1 logado como {bot1.user}')
         await resend_commands(bot1)
+        bot1.loop.create_task(schedule_hierarchy_updates(bot1))
 
     # Carregar os cogs
     bot1.load_extension('acao')
@@ -106,6 +172,7 @@ def run_bot2():
     async def on_ready():
         print(f'Bot 2 logado como {bot2.user}')
         await resend_commands_divisoes(bot2)
+        bot2.loop.create_task(schedule_hierarchy_updates(bot2))
 
         # IDs dos canais
         verificacao_channel_id = 1315844202856321134
