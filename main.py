@@ -104,7 +104,7 @@ async def upload_images(channel):
         await footer_icon_message.delete()
 
 async def update_hierarchy_embed(bot):
-    channel_id = 1315844896292212828  # Replace with your specific channel ID
+    channel_id = 1337181666040483886  # Replace with your specific channel ID
     channel = bot.get_channel(channel_id)
     if not channel:
         print(f"Channel with ID {channel_id} not found.")
@@ -166,7 +166,8 @@ def run_bot1():
     bot1.run(TOKEN1)
 
 def run_bot2():
-    from cadastro import bot2
+    from cadastro import bot2, schedule_embed_updates
+    bot2.loop.create_task(schedule_embed_updates(bot2))
     bot2.run(TOKEN2)
 
 def schedule_restarts():
@@ -339,7 +340,8 @@ if __name__ == "__main__":
     p2.start()
     
     bot1 = commands.Bot(command_prefix="!", intents=intents1)
-    from cadastro import bot2
+    from cadastro import bot2, schedule_embed_updates
+    bot2.loop.create_task(schedule_embed_updates(bot2))
     console = BotConsole(bot1, bot2)
     
     schedule_restarts()
