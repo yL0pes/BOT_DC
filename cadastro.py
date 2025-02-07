@@ -19,6 +19,7 @@ SUPER_ADMIN_ROLE_ID = 1337181664693981220  # Substitua pelo ID do cargo de super
 ANALYSIS_CHANNEL_ID = 1337181666040483881  # Substitua pelo ID do canal de análise
 INSTRUCTOR_ROLE_ID = 1337181664190795808  # ID do cargo de instrutor
 MEMBER_ROLE_ID = 1337181664190795807  # ID do cargo padrão "Membro"
+LOG_CHANNEL_ID = 1337181665545420827  # ID do canal de logs
 
 DIVISION_ROLES = {
     "CIGS": 1337181664656363597,  # Substitua pelo ID do cargo de CIGS
@@ -91,12 +92,89 @@ intents2.members = True  # Ativar intents para membros
 
 bot2 = commands.Bot(command_prefix="!", intents=intents2)
 
-@bot2.event
-async def on_ready():
-    print(f'Bot 2 logado como {bot2.user}')
-    await asyncio.sleep(10)  # Wait for 10 seconds to ensure the bot is fully ready
-    await purge_channels(bot2)
-    bot2.loop.create_task(schedule_embed_updates(bot2))
+class CadastroCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print(f'Bot 2 logado como {self.bot.user}')
+        await asyncio.sleep(10)  # Wait for 10 segundos to ensure the bot is fully ready
+        await purge_channels(self.bot)
+        self.bot.loop.create_task(schedule_embed_updates(self.bot))
+
+    @commands.command()
+    @commands.has_role(ADMIN_ROLE_ID)
+    async def list_ids(self, ctx):
+        db_connection = connect_db()
+        cursor = db_connection.cursor()
+        cursor.execute("SELECT discord_id, user_id FROM user_ids")
+        rows = cursor.fetchall()
+        cursor.close()
+        db_connection.close()
+
+        if rows:
+            response = "IDs salvos no banco de dados:\n"
+            for row in rows:
+                response += f"Discord ID: {row[0]}, User ID: {row[1]}\n"
+        else:
+            response = "Nenhum ID salvo no banco de dados."
+
+        await ctx.send(response)
+
+    @commands.command()
+    @commands.has_role(ADMIN_ROLE_ID)
+    async def reset(self, ctx, member: nextcord.Member):
+        db_connection = connect_db()
+        cursor = db_connection.cursor()
+        cursor.execute("DELETE FROM user_ids WHERE discord_id = %s", (member.id,))
+        cursor.execute("DELETE FROM user_registrations WHERE discord_id = %s", (member.id,))
+        db_connection.commit()
+        cursor.close()
+        db_connection.close()
+
+        roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
+        roles = [member.guild.get_role(role_id) for role_id in roles_to_remove if member.guild.get_role(role_id)]
+        await member.remove_roles(*roles)
+
+        # Voltar o apelido original do usuário
+        await member.edit(nick=None)
+
+        await ctx.send(f"Verificação e registro do usuário {member.mention} foram resetados.")
+
+    @commands.command()
+    @commands.has_role(SUPER_ADMIN_ROLE_ID)
+    async def reset_all_ids(self, ctx):
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel
+
+        await ctx.send("Você tem certeza que deseja resetar todos os IDs? Responda com 'aceitar' ou 'negar'.")
+
+        try:
+            msg = await self.bot.wait_for('message', check=check, timeout=30)
+            if msg.content.lower() == 'aceitar':
+                db_connection = connect_db()
+                cursor = db_connection.cursor()
+                cursor.execute("DELETE FROM user_ids")
+                cursor.execute("DELETE FROM user_registrations")
+                db_connection.commit()
+                cursor.close()
+                db_connection.close()
+
+                guild = ctx.guild
+                roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
+                roles = [guild.get_role(role_id) for role_id in roles_to_remove if guild.get_role(role_id)]
+                for role in roles:
+                    for member in role.members:
+                        await member.remove_roles(role)
+                        # Voltar o apelido original do usuário
+                        await member.edit(nick=None)
+
+                await ctx.send("Todos os IDs foram resetados e os cargos foram removidos de todos os usuários.")
+            else:
+                await ctx.send("Operação cancelada.")
+        except asyncio.TimeoutError:
+            await ctx.send("Tempo esgotado. Operação cancelada.")
 
 async def purge_channels(bot):
     channel_ids = [1337181665545420826, 1337181666040483880, 1337181666463977530]
@@ -302,6 +380,24 @@ class AcceptDropdown(nextcord.ui.Select):
                 new_view.add_item(self.accept_button)
                 new_view.add_item(self.deny_button)
                 await interaction.response.edit_message(view=new_view)
+                
+                # Enviar log no canal de logs
+                log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+                if log_channel:
+                    log_embed = nextcord.Embed(
+                        title="Novo membro verificado",
+                        description=f"**Apelido:** {new_nickname}\n**ID:** {self.user_id}\n**Divisão:** {self.division}\n**ACEITO POR:** {interaction.user.mention}",
+                        color=nextcord.Color.green()
+                    )
+                    await log_channel.send(embed=log_embed)
+                
+                # Excluir mensagens no canal de análise
+                analysis_channel = interaction.guild.get_channel(ANALYSIS_CHANNEL_ID)
+                if analysis_channel:
+                    async for message in analysis_channel.history(limit=100):
+                        if message.author == bot2.user:
+                            await message.delete()
+
                 await interaction.followup.send("Usuário setado com sucesso.", ephemeral=True)
             else:
                 await interaction.response.send_message("Cargo ou divisão não encontrado.", ephemeral=True)
@@ -353,6 +449,14 @@ class DenyReasonModal(nextcord.ui.Modal):
                 new_view.add_item(self.accept_button)
                 new_view.add_item(self.deny_button)
                 await interaction.response.edit_message(view=new_view)
+                
+                # Excluir mensagens no canal de análise
+                analysis_channel = interaction.guild.get_channel(ANALYSIS_CHANNEL_ID)
+                if analysis_channel:
+                    async for message in analysis_channel.history(limit=100):
+                        if message.author == bot2.user:
+                            await message.delete()
+
                 await interaction.followup.send("Motivo enviado com sucesso e embed excluída.", ephemeral=True)
             except nextcord.Forbidden:
                 await interaction.response.send_message("Não foi possível enviar a mensagem privada ao usuário.", ephemeral=True)
@@ -406,78 +510,8 @@ def connect_db():
         database=DB_NAME
     )
 
-@bot2.command()
-@commands.has_role(ADMIN_ROLE_ID)
-async def list_ids(ctx):
-    db_connection = connect_db()
-    cursor = db_connection.cursor()
-    cursor.execute("SELECT discord_id, user_id FROM user_ids")
-    rows = cursor.fetchall()
-    cursor.close()
-    db_connection.close()
-
-    if rows:
-        response = "IDs salvos no banco de dados:\n"
-        for row in rows:
-            response += f"Discord ID: {row[0]}, User ID: {row[1]}\n"
-    else:
-        response = "Nenhum ID salvo no banco de dados."
-
-    await ctx.send(response)
-
-@bot2.command()
-@commands.has_role(ADMIN_ROLE_ID)
-async def reset(ctx, member: nextcord.Member):
-    db_connection = connect_db()
-    cursor = db_connection.cursor()
-    cursor.execute("DELETE FROM user_ids WHERE discord_id = %s", (member.id,))
-    cursor.execute("DELETE FROM user_registrations WHERE discord_id = %s", (member.id,))
-    db_connection.commit()
-    cursor.close()
-    db_connection.close()
-
-    roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
-    roles = [member.guild.get_role(role_id) for role_id in roles_to_remove if member.guild.get_role(role_id)]
-    await member.remove_roles(*roles)
-
-    # Voltar o apelido original do usuário
-    await member.edit(nick=None)
-
-    await ctx.send(f"Verificação e registro do usuário {member.mention} foram resetados.")
-
-@bot2.command()
-@commands.has_role(SUPER_ADMIN_ROLE_ID)
-async def reset_all_ids(ctx):
-    def check(m):
-        return m.author == ctx.author and m.channel == ctx.channel
-
-    await ctx.send("Você tem certeza que deseja resetar todos os IDs? Responda com 'aceitar' ou 'negar'.")
-
-    try:
-        msg = await bot2.wait_for('message', check=check, timeout=30)
-        if msg.content.lower() == 'aceitar':
-            db_connection = connect_db()
-            cursor = db_connection.cursor()
-            cursor.execute("DELETE FROM user_ids")
-            cursor.execute("DELETE FROM user_registrations")
-            db_connection.commit()
-            cursor.close()
-            db_connection.close()
-
-            guild = ctx.guild
-            roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
-            roles = [guild.get_role(role_id) for role_id in roles_to_remove if guild.get_role(role_id)]
-            for role in roles:
-                for member in role.members:
-                    await member.remove_roles(role)
-                    # Voltar o apelido original do usuário
-                    await member.edit(nick=None)
-
-            await ctx.send("Todos os IDs foram resetados e os cargos foram removidos de todos os usuários.")
-        else:
-            await ctx.send("Operação cancelada.")
-    except asyncio.TimeoutError:
-        await ctx.send("Tempo esgotado. Operação cancelada.")
+def setup(bot):
+    bot.add_cog(CadastroCog(bot))
 
 if __name__ == "__main__":
     db_connection = connect_db()
