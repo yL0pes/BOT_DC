@@ -17,15 +17,71 @@ VERIFIED_ROLE_ID = 1337181664106778675  # Substitua pelo ID do cargo de verifica
 ADMIN_ROLE_ID = 1337181664693981217  # Substitua pelo ID do cargo de administrador para !reset e !list_ids
 SUPER_ADMIN_ROLE_ID = 1337181664693981220  # Substitua pelo ID do cargo de super administrador para !reset_all_ids
 ANALYSIS_CHANNEL_ID = 1337181666040483881  # Substitua pelo ID do canal de análise
+INSTRUCTOR_ROLE_ID = 1337181664190795808  # ID do cargo de instrutor
+MEMBER_ROLE_ID = 1337181664190795807  # ID do cargo padrão "Membro"
 
 DIVISION_ROLES = {
-    "CIGS": 1337181664693981221,  # Substitua pelo ID do cargo de CIGS
-    "FAB": 1337181664693981222,  # Substitua pelo ID do cargo de FAB
-    "CMDS": 1337181664693981223,  # Substitua pelo ID do cargo de CMDS
-    "CIEX": 1337181664693981224,  # Substitua pelo ID do cargo de CIEX
-    "BFE": 1337181664693981225,  # Substitua pelo ID do cargo de BFE
-    "PE": 1337181664693981226,  # Substitua pelo ID do cargo de PE
-    "SPEED": 1337181664693981227  # Substitua pelo ID do cargo de SPEED
+    "CIGS": 1337181664656363597,  # Substitua pelo ID do cargo de CIGS
+    "FAB": 1337181664656363596,  # Substitua pelo ID do cargo de FAB
+    "CMDS": 1337181664656363595,  # Substitua pelo ID do cargo de CMDS
+    "CIEX": 1337181664656363594,  # Substitua pelo ID do cargo de CIEX
+    "BFE": 1337181664656363593,  # Substitua pelo ID do cargo de BFE
+    "PE": 1337181664656363592,  # Substitua pelo ID do cargo de PE
+    "SPEED": 1337181664656363591  # Substitua pelo ID do cargo de SPEED
+}
+
+DIVISION_SPECIFIC_ROLES = {
+    "CIGS": {
+        "ALUNO": 1337181664589381705,
+        "SOLDADO": 1337181664589381706,
+        "ELITE": 1337181664589381707,
+        "INSTRUTOR": 1337181664589381708,
+        "SUPERVISOR": 1337181664589381709,
+        "SUPERVISOR-GERAL": 1337181664589381710
+    },
+    "FAB": {
+        "PILOTO": 1337181664563957837,
+        "PILOTO ELITE": 1337181664563957838,
+        "INSTRUTOR": 1337181664563957839,
+        "SUPERVISOR": 1337181664563957840,
+        "SUPERVISOR-GERAL": 1337181664563957841
+    },
+    "CMDS": {
+        "SOLDADO": 1337181664467619977,
+        "ELITE": 1337181664467619978,
+        "INSTRUTOR": 1337181664467619979,
+        "SUPERVISOR": 1337181664467619980,
+        "SUPERVISOR-GERAL": 1337181664563957833
+    },
+    "CIEX": {
+        "INVESTIGADOR": 1337181664375472246,
+        "INSTRUTOR": 1337181664375472247,
+        "INVESTIGADOR GERAL": 1337181664467619971,
+        "SUPERVISOR": 1337181664467619972,
+        "SUPERVISOR-GERAL": 1337181664467619973
+    },
+    "BFE": {
+        "ESTAGIARIO": 1337181664266162250,
+        "SOLDADO": 1337181664266162251,
+        "ELITE": 1337181664266162252,
+        "INSTRUTOR": 1337181664266162253,
+        "SUPERVISOR": 1337181664266162254,
+        "SUPERVISOR-GERAL": 1337181664266162255
+    },
+    "PE": {
+        "SOLDADO": 1337181664375472238,
+        "ELITE": 1337181664375472239,
+        "INSTRUTOR": 1337181664375472240,
+        "SUPERVISOR": 1337181664375472241,
+        "SUPERVISOR-GERAL": 1337181664375472242
+    },
+    "SPEED": {
+        "SOLDADO": 1337181664190795810,
+        "ELITE": 1337181664190795811,
+        "INSTRUTOR": 1337181664190795812,
+        "SUPERVISOR": 1337181664190795813,
+        "SUPERVISOR-GERAL": 1337181664190795814
+    }
 }
 
 intents2 = nextcord.Intents.default()
@@ -135,7 +191,7 @@ class RegistrationModal(nextcord.ui.Modal):
             cursor.execute("INSERT INTO user_registrations (discord_id, user_name) VALUES (%s, %s)", (user_id, user_name))
             db_connection.commit()
             await interaction.response.send_message("Nome salvo com sucesso! Agora, selecione sua divisão.", ephemeral=True)
-            await interaction.followup.send("Selecione sua divisão:", view=DivisionSelectView(user_id, user_name))
+            await interaction.followup.send(content="Selecione sua divisão:", view=DivisionSelectView(user_id, user_name), ephemeral=True)
         except mysql.connector.errors.IntegrityError:
             await interaction.response.send_message("Você já está registrado!", ephemeral=True)
         finally:
@@ -148,11 +204,11 @@ class DivisionSelectView(nextcord.ui.View):
         self.user_id = user_id
         self.user_name = user_name
 
-        self.add_item(nextcord.ui.Select(
+        self.select = nextcord.ui.Select(
             placeholder="Escolha sua Divisão",
             options=[
                 nextcord.SelectOption(label="CIGS", description="Centro de Instrução de Guerra na Selva", value="CIGS"),
-                nextcord.SelectOption(label="FAB", description="Força Áerea Brasileira", value="FAB"),
+                nextcord.SelectOption(label="FAB", description="Força Aérea Brasileira", value="FAB"),
                 nextcord.SelectOption(label="CMDS", description="Batalhão dos Comandos", value="CMDS"),
                 nextcord.SelectOption(label="CIEX", description="Centro de Inteligência do Exército", value="CIEX"),
                 nextcord.SelectOption(label="BFE", description="Batalhão de Forças Especiais", value="BFE"),
@@ -161,11 +217,12 @@ class DivisionSelectView(nextcord.ui.View):
             ],
             min_values=1,
             max_values=1
-        ))
+        )
+        self.select.callback = self.select_callback
+        self.add_item(self.select)
 
-    @nextcord.ui.select()
-    async def select_callback(self, select, interaction: nextcord.Interaction):
-        division = select.values[0]
+    async def select_callback(self, interaction: nextcord.Interaction):
+        division = self.select.values[0]
 
         db_connection = connect_db()
         cursor = db_connection.cursor()
@@ -183,16 +240,138 @@ class DivisionSelectView(nextcord.ui.View):
         if analysis_channel:
             embed = nextcord.Embed(
                 title="Novo Registro de Usuário",
-                description=f"Nome: {self.user_name}\nDivisão: {division}",
+                description=f"👮 Nome: {self.user_name}\n🌐 Divisão: {division}\n🪪 ID: {self.user_id}",
                 color=nextcord.Color.blue()
             )
-            embed.set_footer(text="Criado por - 𝓛𝓸𝓮𝓼")
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
             view = nextcord.ui.View(timeout=None)
-            view.add_item(nextcord.ui.Button(label="ACEITAR", style=nextcord.ButtonStyle.green, custom_id=f"accept_{self.user_id}"))
-            view.add_item(nextcord.ui.Button(label="NEGAR", style=nextcord.ButtonStyle.red, custom_id=f"deny_{self.user_id}"))
+            accept_button = AcceptButton(self.user_id, self.user_name, division)
+            deny_button = DenyButton(self.user_id, self.user_name, embed)
+            view.add_item(accept_button)
+            view.add_item(deny_button)
             await analysis_channel.send(embed=embed, view=view)
 
         await interaction.response.send_message("Divisão selecionada com sucesso! Seu registro foi enviado para análise.", ephemeral=True)
+
+class AcceptDropdown(nextcord.ui.Select):
+    def __init__(self, user_id, user_name, division, accept_button, deny_button):
+        self.user_id = user_id
+        self.user_name = user_name
+        self.division = division
+        self.accept_button = accept_button
+        self.deny_button = deny_button
+
+        options = [
+            nextcord.SelectOption(label=role_name, value=role_name)
+            for role_name in DIVISION_SPECIFIC_ROLES[self.division].keys()
+        ]
+
+        super().__init__(
+            placeholder="Escolha o cargo específico",
+            options=options,
+            min_values=1,
+            max_values=1
+        )
+
+    async def callback(self, interaction: nextcord.Interaction):
+        specific_role = self.values[0]
+        specific_role_id = DIVISION_SPECIFIC_ROLES[self.division][specific_role]
+        user = interaction.guild.get_member(self.user_id)
+        if user:
+            division_role_id = DIVISION_ROLES[self.division]
+            division_role = interaction.guild.get_role(division_role_id)
+            specific_role_obj = interaction.guild.get_role(specific_role_id)
+            member_role = interaction.guild.get_role(MEMBER_ROLE_ID)
+            if division_role and specific_role_obj and member_role:
+                await user.add_roles(division_role, specific_role_obj, member_role)
+                db_connection = connect_db()
+                cursor = db_connection.cursor()
+                cursor.execute("SELECT user_id FROM user_ids WHERE discord_id = %s", (self.user_id,))
+                result = cursor.fetchone()
+                cursor.close()
+                db_connection.close()
+                user_id_from_db = result[0] if result else self.user_id
+                new_nickname = f"[{specific_role[:3]}-{self.division}] {self.user_name} | {user_id_from_db}"
+                if len(new_nickname) > 32:
+                    new_nickname = new_nickname[:32]
+                await user.edit(nick=new_nickname)
+                self.accept_button.disabled = True
+                self.accept_button.label = "ACEITO!"
+                self.deny_button.disabled = True
+                new_view = nextcord.ui.View(timeout=None)
+                new_view.add_item(self.accept_button)
+                new_view.add_item(self.deny_button)
+                await interaction.response.edit_message(view=new_view)
+                await interaction.followup.send("Usuário setado com sucesso.", ephemeral=True)
+            else:
+                await interaction.response.send_message("Cargo ou divisão não encontrado.", ephemeral=True)
+        else:
+            await interaction.response.send_message("Usuário não encontrado.", ephemeral=True)
+
+class AcceptButton(nextcord.ui.Button):
+    def __init__(self, user_id, user_name, division):
+        super().__init__(label="ACEITAR", style=nextcord.ButtonStyle.green, custom_id=f"accept_{user_id}")
+        self.user_id = user_id
+        self.user_name = user_name
+        self.division = division
+
+    async def callback(self, interaction: nextcord.Interaction):
+        if INSTRUCTOR_ROLE_ID in [role.id for role in interaction.user.roles]:
+            view = nextcord.ui.View(timeout=None)
+            dropdown = AcceptDropdown(self.user_id, self.user_name, self.division, self, interaction.message.components[0].children[1])
+            view.add_item(dropdown)
+            await interaction.response.send_message("Selecione o cargo específico:", view=view, ephemeral=True)
+        else:
+            await interaction.response.send_message("Você não tem permissão para aceitar registros.", ephemeral=True)
+
+class DenyReasonModal(nextcord.ui.Modal):
+    def __init__(self, user_id, user_name, message, accept_button, deny_button):
+        super().__init__(title="Motivo da Negação", timeout=None)
+        self.user_id = user_id
+        self.user_name = user_name
+        self.message = message
+        self.accept_button = accept_button
+        self.deny_button = deny_button
+        self.reason_input = nextcord.ui.TextInput(
+            label="Motivo",
+            placeholder="Digite o motivo da negação",
+            required=True,
+            style=nextcord.TextInputStyle.paragraph
+        )
+        self.add_item(self.reason_input)
+
+    async def callback(self, interaction: nextcord.Interaction):
+        reason = self.reason_input.value
+        user = interaction.guild.get_member(self.user_id)
+        if user:
+            try:
+                await user.send(f"Seu pedido de setagem foi negado pelo seguinte motivo: {reason}")
+                await self.message.delete()
+                self.accept_button.disabled = True
+                self.deny_button.disabled = True
+                new_view = nextcord.ui.View(timeout=None)
+                new_view.add_item(self.accept_button)
+                new_view.add_item(self.deny_button)
+                await interaction.response.edit_message(view=new_view)
+                await interaction.followup.send("Motivo enviado com sucesso e embed excluída.", ephemeral=True)
+            except nextcord.Forbidden:
+                await interaction.response.send_message("Não foi possível enviar a mensagem privada ao usuário.", ephemeral=True)
+        else:
+            await interaction.response.send_message("Usuário não encontrado.", ephemeral=True)
+
+class DenyButton(nextcord.ui.Button):
+    def __init__(self, user_id, user_name, message):
+        super().__init__(label="NEGAR", style=nextcord.ButtonStyle.red, custom_id=f"deny_{user_id}")
+        self.user_id = user_id
+        self.user_name = user_name
+        self.message = message
+
+    async def callback(self, interaction: nextcord.Interaction):
+        if INSTRUCTOR_ROLE_ID in [role.id for role in interaction.user.roles]:
+            modal = DenyReasonModal(self.user_id, self.user_name, self.message, interaction.message.components[0].children[0], self)
+            await interaction.response.send_modal(modal)
+        else:
+            await interaction.response.send_message("Você não tem permissão para negar registros.", ephemeral=True)
 
 class RegistrationButton(nextcord.ui.Button):
     def __init__(self):
@@ -257,9 +436,12 @@ async def reset(ctx, member: nextcord.Member):
     cursor.close()
     db_connection.close()
 
-    role = member.guild.get_role(VERIFIED_ROLE_ID)
-    if role:
-        await member.remove_roles(role)
+    roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
+    roles = [member.guild.get_role(role_id) for role_id in roles_to_remove if member.guild.get_role(role_id)]
+    await member.remove_roles(*roles)
+
+    # Voltar o apelido original do usuário
+    await member.edit(nick=None)
 
     await ctx.send(f"Verificação e registro do usuário {member.mention} foram resetados.")
 
@@ -281,7 +463,17 @@ async def reset_all_ids(ctx):
             db_connection.commit()
             cursor.close()
             db_connection.close()
-            await ctx.send("Todos os IDs foram resetados.")
+
+            guild = ctx.guild
+            roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
+            roles = [guild.get_role(role_id) for role_id in roles_to_remove if guild.get_role(role_id)]
+            for role in roles:
+                for member in role.members:
+                    await member.remove_roles(role)
+                    # Voltar o apelido original do usuário
+                    await member.edit(nick=None)
+
+            await ctx.send("Todos os IDs foram resetados e os cargos foram removidos de todos os usuários.")
         else:
             await ctx.send("Operação cancelada.")
     except asyncio.TimeoutError:

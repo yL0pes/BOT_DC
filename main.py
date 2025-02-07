@@ -199,7 +199,7 @@ def run_bot2():
                 description="Clique no botão abaixo para verificar seu ID.",
                 color=nextcord.Color.green()
             )
-            embed.set_footer(text="Criado por - 𝓛𝓸𝓮𝓼")
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
             button = nextcord.ui.Button(label="VERIFICAÇÃO", style=nextcord.ButtonStyle.green)
             button.callback = bot2.get_cog('Verificacao').button_callback
             view = nextcord.ui.View(timeout=None)
