@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 import asyncio
 import mysql.connector
+from config import INSTRUCTOR_ROLE_ID, DIVISION_ROLES, ROLE_ABBREVIATIONS, DIVISION_SPECIFIC_ROLES
+from transferencia import TransferenciaCog
 
 load_dotenv()  # Carregar variáveis de ambiente do arquivo .env
 
@@ -17,73 +19,8 @@ VERIFIED_ROLE_ID = 1337181664106778675  # Substitua pelo ID do cargo de verifica
 ADMIN_ROLE_ID = 1337181664693981217  # Substitua pelo ID do cargo de administrador para !reset e !list_ids
 SUPER_ADMIN_ROLE_ID = 1337181664693981220  # Substitua pelo ID do cargo de super administrador para !reset_all_ids
 ANALYSIS_CHANNEL_ID = 1337181666040483881  # Substitua pelo ID do canal de análise
-INSTRUCTOR_ROLE_ID = 1337181664190795808  # ID do cargo de instrutor
 MEMBER_ROLE_ID = 1337181664190795807  # ID do cargo padrão "Membro"
 LOG_CHANNEL_ID = 1337181665545420827  # ID do canal de logs
-
-DIVISION_ROLES = {
-    "CIGS": 1337181664656363597,  # Substitua pelo ID do cargo de CIGS
-    "FAB": 1337181664656363596,  # Substitua pelo ID do cargo de FAB
-    "CMDS": 1337181664656363595,  # Substitua pelo ID do cargo de CMDS
-    "CIEX": 1337181664656363594,  # Substitua pelo ID do cargo de CIEX
-    "BFE": 1337181664656363593,  # Substitua pelo ID do cargo de BFE
-    "PE": 1337181664656363592,  # Substitua pelo ID do cargo de PE
-    "SPEED": 1337181664656363591  # Substitua pelo ID do cargo de SPEED
-}
-
-DIVISION_SPECIFIC_ROLES = {
-    "CIGS": {
-        "ALUNO": 1337181664589381705,
-        "SOLDADO": 1337181664589381706,
-        "ELITE": 1337181664589381707,
-        "INSTRUTOR": 1337181664589381708,
-        "SUPERVISOR": 1337181664589381709,
-        "SUPERVISOR-GERAL": 1337181664589381710
-    },
-    "FAB": {
-        "PILOTO": 1337181664563957837,
-        "PILOTO ELITE": 1337181664563957838,
-        "INSTRUTOR": 1337181664563957839,
-        "SUPERVISOR": 1337181664563957840,
-        "SUPERVISOR-GERAL": 1337181664563957841
-    },
-    "CMDS": {
-        "SOLDADO": 1337181664467619977,
-        "ELITE": 1337181664467619978,
-        "INSTRUTOR": 1337181664467619979,
-        "SUPERVISOR": 1337181664467619980,
-        "SUPERVISOR-GERAL": 1337181664563957833
-    },
-    "CIEX": {
-        "INVESTIGADOR": 1337181664375472246,
-        "INSTRUTOR": 1337181664375472247,
-        "INVESTIGADOR GERAL": 1337181664467619971,
-        "SUPERVISOR": 1337181664467619972,
-        "SUPERVISOR-GERAL": 1337181664467619973
-    },
-    "BFE": {
-        "ESTAGIARIO": 1337181664266162250,
-        "SOLDADO": 1337181664266162251,
-        "ELITE": 1337181664266162252,
-        "INSTRUTOR": 1337181664266162253,
-        "SUPERVISOR": 1337181664266162254,
-        "SUPERVISOR-GERAL": 1337181664266162255
-    },
-    "PE": {
-        "SOLDADO": 1337181664375472238,
-        "ELITE": 1337181664375472239,
-        "INSTRUTOR": 1337181664375472240,
-        "SUPERVISOR": 1337181664375472241,
-        "SUPERVISOR-GERAL": 1337181664375472242
-    },
-    "SPEED": {
-        "SOLDADO": 1337181664190795810,
-        "ELITE": 1337181664190795811,
-        "INSTRUTOR": 1337181664190795812,
-        "SUPERVISOR": 1337181664190795813,
-        "SUPERVISOR-GERAL": 1337181664190795814
-    }
-}
 
 intents2 = nextcord.Intents.default()
 intents2.message_content = True
@@ -98,6 +35,7 @@ class CadastroCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
+        print("CadastroCog: Bot está pronto.")
         await asyncio.sleep(10)  # Wait for 10 segundos to ensure the bot is fully ready
         await purge_channels(self.bot)
         self.bot.loop.create_task(schedule_embed_updates(self.bot))
@@ -205,7 +143,7 @@ async def purge_channels(bot):
     channel_ids = [1337181665545420826, 1337181666040483880, 1337181666463977530]
     for channel_id in channel_ids:
         channel = bot.get_channel(channel_id)
-        if channel:
+        if (channel):
             await channel.purge()
 
 async def update_embed(bot, channel_id, title, description, color, tag, button=None):
@@ -374,21 +312,6 @@ class DivisionSelectView(nextcord.ui.View):
         await interaction.response.send_message("Divisão selecionada com sucesso! Seu registro foi enviado para análise.", ephemeral=True)
         bot2.loop.create_task(delete_analysis_messages())
 
-# Mapeamento dos apelidos
-ROLE_ABBREVIATIONS = {
-    "ALUNO": "ALN",
-    "SOLDADO": "SD",
-    "ELITE": "ELT",
-    "INSTRUTOR": "INST",
-    "SUPERVISOR": "SPV",
-    "SUPERVISOR-GERAL": "SPV-G",
-    "PILOTO": "PLT",
-    "PILOTO ELITE": "PLT-ELT",
-    "INVESTIGADOR": "INV",
-    "INVESTIGADOR GERAL": "INV-G",
-    "ESTAGIARIO": "EST"
-}
-
 class AcceptDropdown(nextcord.ui.Select):
     def __init__(self, user_id, user_name, division):
         self.user_id = user_id
@@ -551,7 +474,7 @@ async def schedule_embed_updates(bot):
         register_button = RegistrationButton()
         await update_embed(bot, 1337181665545420826, "Verificação", "Clique no botão abaixo para verificar seu ID.", nextcord.Color.green(), "verificacao", verify_button)
         await update_embed(bot, 1337181666040483880, "Registro de Usuário", "Clique no botão abaixo para iniciar o registro.", nextcord.Color.blue(), "registro", register_button)
-        await update_embed(bot, 1337181666463977530, "Solicitação de Transferência", "Selecione a divisão para a qual deseja ser transferido no dropdown abaixo.", nextcord.Color.blue(), "transferencia")
+        await bot.get_cog("TransferenciaCog").update_transfer_embed()  # Chame a função do cog
         await asyncio.sleep(3600)  # 1 hour
 
 def connect_db():
@@ -563,6 +486,7 @@ def connect_db():
     )
 
 def setup(bot):
+    print("CadastroCog: Carregando cog.")
     bot.add_cog(CadastroCog(bot))
 
 if __name__ == "__main__":
@@ -572,4 +496,5 @@ if __name__ == "__main__":
     else:
         print("Falha ao conectar ao banco de dados")
     
+    print("Iniciando bot2...")
     bot2.run(TOKEN2)

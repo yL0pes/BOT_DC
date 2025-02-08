@@ -175,8 +175,11 @@ def run_bot2():
         bot2.loop.create_task(schedule_hierarchy_updates(bot2))
 
     # Carregar os cogs
+    print("Carregando cogs do bot2...")
     bot2.load_extension('cadastro')
+    bot2.load_extension('transferencia')  # Carregar o cog transferencia
 
+    print("Iniciando bot2...")
     bot2.run(TOKEN2)
 
 def schedule_restarts():
