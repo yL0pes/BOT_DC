@@ -98,7 +98,6 @@ class CadastroCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(f'Bot 2 logado como {self.bot.user}')
         await asyncio.sleep(10)  # Wait for 10 segundos to ensure the bot is fully ready
         await purge_channels(self.bot)
         self.bot.loop.create_task(schedule_embed_updates(self.bot))
@@ -135,12 +134,26 @@ class CadastroCog(commands.Cog):
 
         roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
         roles = [member.guild.get_role(role_id) for role_id in roles_to_remove if member.guild.get_role(role_id)]
-        await member.remove_roles(*roles)
+        await asyncio.gather(*[member.remove_roles(role) for role in roles])
 
         # Voltar o apelido original do usuário
         await member.edit(nick=None)
 
         await ctx.send(f"Verificação e registro do usuário {member.mention} foram resetados.")
+
+        # Log the reset action
+        log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="🔄 Reset de Usuário",
+                description=f"**Usuário:** {member.mention}\n**ID:** {member.id}",
+                color=nextcord.Color.orange()
+            )
+            embed.add_field(name="Ação", value="Reset de verificação e registro", inline=False)
+            embed.add_field(name="Executado por", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Status", value="Concluído", inline=True)
+            embed.set_footer(text="Sistema de Logs")
+            await log_channel.send(embed=embed)
 
     @commands.command()
     @commands.has_role(SUPER_ADMIN_ROLE_ID)
@@ -165,12 +178,24 @@ class CadastroCog(commands.Cog):
                 roles_to_remove = [VERIFIED_ROLE_ID] + list(DIVISION_ROLES.values()) + [role_id for division in DIVISION_SPECIFIC_ROLES.values() for role_id in division.values()]
                 roles = [guild.get_role(role_id) for role_id in roles_to_remove if guild.get_role(role_id)]
                 for role in roles:
-                    for member in role.members:
-                        await member.remove_roles(role)
-                        # Voltar o apelido original do usuário
-                        await member.edit(nick=None)
+                    await asyncio.gather(*[member.remove_roles(role) for member in role.members])
+                    # Voltar o apelido original do usuário
+                    await asyncio.gather(*[member.edit(nick=None) for member in role.members])
 
                 await ctx.send("Todos os IDs foram resetados e os cargos foram removidos de todos os usuários.")
+
+                # Log the reset all action
+                log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
+                if log_channel:
+                    embed = nextcord.Embed(
+                        title="🔄 Reset de Todos os IDs",
+                        description="**Ação:** Reset de todos os IDs e remoção de cargos",
+                        color=nextcord.Color.red()
+                    )
+                    embed.add_field(name="Executado por", value=ctx.author.mention, inline=True)
+                    embed.add_field(name="Status", value="Concluído", inline=True)
+                    embed.set_footer(text="Sistema de Logs")
+                    await log_channel.send(embed=embed)
             else:
                 await ctx.send("Operação cancelada.")
         except asyncio.TimeoutError:
@@ -276,6 +301,34 @@ class RegistrationModal(nextcord.ui.Modal):
             cursor.close()
             db_connection.close()
 
+async def delete_analysis_messages():
+    await asyncio.sleep(10)  # Esperar 10 segundos antes de excluir as mensagens
+    analysis_channel = bot2.get_channel(ANALYSIS_CHANNEL_ID)
+    if analysis_channel:
+        async for message in analysis_channel.history(limit=100):
+            if message.author == bot2.user:
+                await message.delete()
+
+async def send_analysis_message(guild, user_id, user_name, division, user_id_from_db):
+    analysis_channel = guild.get_channel(ANALYSIS_CHANNEL_ID)
+    if analysis_channel:
+        role = guild.get_role(DIVISION_ROLES[division])
+        embed = nextcord.Embed(
+            title="📋 Novo Registro de Usuário",
+            description=f"👤 **Nome:** {user_name}\n🌐 **Divisão:** {role.mention}\n🆔 **ID:** {user_id_from_db}",
+            color=nextcord.Color.blue()
+        )
+        embed.set_thumbnail(url=guild.get_member(user_id).avatar.url)
+        embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+        embed.add_field(name="📅 Data de Registro", value=f"{nextcord.utils.utcnow().strftime('%d/%m/%Y')}", inline=True)
+        embed.add_field(name="⏰ Hora de Registro", value=f"{nextcord.utils.utcnow().strftime('%H:%M:%S')}", inline=True)
+        view = nextcord.ui.View(timeout=None)
+        accept_button = AcceptButton(user_id, user_name, division)
+        deny_button = DenyButton(user_id, user_name, embed)
+        view.add_item(accept_button)
+        view.add_item(deny_button)
+        await analysis_channel.send(embed=embed, view=view)
+
 class DivisionSelectView(nextcord.ui.View):
     def __init__(self, user_id, user_name):
         super().__init__(timeout=None)
@@ -305,6 +358,8 @@ class DivisionSelectView(nextcord.ui.View):
         db_connection = connect_db()
         cursor = db_connection.cursor()
         cursor.execute("UPDATE user_registrations SET division = %s WHERE discord_id = %s", (division, self.user_id))
+        cursor.execute("SELECT user_id FROM user_ids WHERE discord_id = %s", (self.user_id,))
+        user_id_from_db = cursor.fetchone()[0]
         db_connection.commit()
         cursor.close()
         db_connection.close()
@@ -314,30 +369,31 @@ class DivisionSelectView(nextcord.ui.View):
         if role:
             await interaction.user.add_roles(role)
 
-        analysis_channel = interaction.guild.get_channel(ANALYSIS_CHANNEL_ID)
-        if analysis_channel:
-            embed = nextcord.Embed(
-                title="Novo Registro de Usuário",
-                description=f"👮 Nome: {self.user_name}\n🌐 Divisão: {division}\n🪪 ID: {self.user_id}",
-                color=nextcord.Color.blue()
-            )
-            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
-            view = nextcord.ui.View(timeout=None)
-            accept_button = AcceptButton(self.user_id, self.user_name, division)
-            deny_button = DenyButton(self.user_id, self.user_name, embed)
-            view.add_item(accept_button)
-            view.add_item(deny_button)
-            await analysis_channel.send(embed=embed, view=view)
+        await send_analysis_message(interaction.guild, self.user_id, self.user_name, division, user_id_from_db)
 
         await interaction.response.send_message("Divisão selecionada com sucesso! Seu registro foi enviado para análise.", ephemeral=True)
+        bot2.loop.create_task(delete_analysis_messages())
+
+# Mapeamento dos apelidos
+ROLE_ABBREVIATIONS = {
+    "ALUNO": "ALN",
+    "SOLDADO": "SD",
+    "ELITE": "ELT",
+    "INSTRUTOR": "INST",
+    "SUPERVISOR": "SPV",
+    "SUPERVISOR-GERAL": "SPV-G",
+    "PILOTO": "PLT",
+    "PILOTO ELITE": "PLT-ELT",
+    "INVESTIGADOR": "INV",
+    "INVESTIGADOR GERAL": "INV-G",
+    "ESTAGIARIO": "EST"
+}
 
 class AcceptDropdown(nextcord.ui.Select):
-    def __init__(self, user_id, user_name, division, accept_button, deny_button):
+    def __init__(self, user_id, user_name, division):
         self.user_id = user_id
         self.user_name = user_name
         self.division = division
-        self.accept_button = accept_button
-        self.deny_button = deny_button
 
         options = [
             nextcord.SelectOption(label=role_name, value=role_name)
@@ -345,7 +401,7 @@ class AcceptDropdown(nextcord.ui.Select):
         ]
 
         super().__init__(
-            placeholder="Escolha o cargo específico",
+            placeholder="Escolha a patente do usuário",
             options=options,
             min_values=1,
             max_values=1
@@ -369,17 +425,20 @@ class AcceptDropdown(nextcord.ui.Select):
                 cursor.close()
                 db_connection.close()
                 user_id_from_db = result[0] if result else self.user_id
-                new_nickname = f"[{specific_role[:3]}-{self.division}] {self.user_name} | {user_id_from_db}"
+                role_abbreviation = ROLE_ABBREVIATIONS.get(specific_role, specific_role)
+                new_nickname = f"[{role_abbreviation}-{self.division}] {self.user_name} | {user_id_from_db}"
                 if len(new_nickname) > 32:
                     new_nickname = new_nickname[:32]
                 await user.edit(nick=new_nickname)
-                self.accept_button.disabled = True
-                self.accept_button.label = "ACEITO!"
-                self.deny_button.disabled = True
+                
+                # Atualizar a mensagem original para mostrar o botão "SETADO"
+                setado_button = nextcord.ui.Button(label="SETADO", style=nextcord.ButtonStyle.gray, disabled=True)
                 new_view = nextcord.ui.View(timeout=None)
-                new_view.add_item(self.accept_button)
-                new_view.add_item(self.deny_button)
-                await interaction.response.edit_message(view=new_view)
+                new_view.add_item(setado_button)
+                try:
+                    await interaction.message.edit(view=new_view)
+                except nextcord.errors.NotFound:
+                    print("Mensagem não encontrada para edição.")
                 
                 # Enviar log no canal de logs
                 log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
@@ -391,14 +450,7 @@ class AcceptDropdown(nextcord.ui.Select):
                     )
                     await log_channel.send(embed=log_embed)
                 
-                # Excluir mensagens no canal de análise
-                analysis_channel = interaction.guild.get_channel(ANALYSIS_CHANNEL_ID)
-                if analysis_channel:
-                    async for message in analysis_channel.history(limit=100):
-                        if message.author == bot2.user:
-                            await message.delete()
-
-                await interaction.followup.send("Usuário setado com sucesso.", ephemeral=True)
+                await interaction.response.send_message("Usuário setado com sucesso.", ephemeral=True)
             else:
                 await interaction.response.send_message("Cargo ou divisão não encontrado.", ephemeral=True)
         else:
@@ -414,20 +466,18 @@ class AcceptButton(nextcord.ui.Button):
     async def callback(self, interaction: nextcord.Interaction):
         if INSTRUCTOR_ROLE_ID in [role.id for role in interaction.user.roles]:
             view = nextcord.ui.View(timeout=None)
-            dropdown = AcceptDropdown(self.user_id, self.user_name, self.division, self, interaction.message.components[0].children[1])
+            dropdown = AcceptDropdown(self.user_id, self.user_name, self.division)
             view.add_item(dropdown)
             await interaction.response.send_message("Selecione o cargo específico:", view=view, ephemeral=True)
         else:
             await interaction.response.send_message("Você não tem permissão para aceitar registros.", ephemeral=True)
 
 class DenyReasonModal(nextcord.ui.Modal):
-    def __init__(self, user_id, user_name, message, accept_button, deny_button):
+    def __init__(self, user_id, user_name, message):
         super().__init__(title="Motivo da Negação", timeout=None)
         self.user_id = user_id
         self.user_name = user_name
         self.message = message
-        self.accept_button = accept_button
-        self.deny_button = deny_button
         self.reason_input = nextcord.ui.TextInput(
             label="Motivo",
             placeholder="Digite o motivo da negação",
@@ -442,13 +492,15 @@ class DenyReasonModal(nextcord.ui.Modal):
         if user:
             try:
                 await user.send(f"Seu pedido de setagem foi negado pelo seguinte motivo: {reason}")
-                await self.message.delete()
-                self.accept_button.disabled = True
-                self.deny_button.disabled = True
+                
+                # Atualizar a mensagem original para mostrar o botão "SETADO"
+                setado_button = nextcord.ui.Button(label="SETADO", style=nextcord.ButtonStyle.gray, disabled=True)
                 new_view = nextcord.ui.View(timeout=None)
-                new_view.add_item(self.accept_button)
-                new_view.add_item(self.deny_button)
-                await interaction.response.edit_message(view=new_view)
+                new_view.add_item(setado_button)
+                try:
+                    await self.message.edit(view=new_view)
+                except nextcord.errors.NotFound:
+                    print("Mensagem não encontrada para edição.")
                 
                 # Excluir mensagens no canal de análise
                 analysis_channel = interaction.guild.get_channel(ANALYSIS_CHANNEL_ID)
@@ -457,7 +509,7 @@ class DenyReasonModal(nextcord.ui.Modal):
                         if message.author == bot2.user:
                             await message.delete()
 
-                await interaction.followup.send("Motivo enviado com sucesso e embed excluída.", ephemeral=True)
+                await interaction.response.send_message("Motivo enviado com sucesso e embed atualizada.", ephemeral=True)
             except nextcord.Forbidden:
                 await interaction.response.send_message("Não foi possível enviar a mensagem privada ao usuário.", ephemeral=True)
         else:
@@ -472,7 +524,7 @@ class DenyButton(nextcord.ui.Button):
 
     async def callback(self, interaction: nextcord.Interaction):
         if INSTRUCTOR_ROLE_ID in [role.id for role in interaction.user.roles]:
-            modal = DenyReasonModal(self.user_id, self.user_name, self.message, interaction.message.components[0].children[0], self)
+            modal = DenyReasonModal(self.user_id, self.user_name, self.message)
             await interaction.response.send_modal(modal)
         else:
             await interaction.response.send_message("Você não tem permissão para negar registros.", ephemeral=True)
@@ -515,7 +567,7 @@ def setup(bot):
 
 if __name__ == "__main__":
     db_connection = connect_db()
-    if db_connection.is_connected():
+    if (db_connection.is_connected()):
         print("Conectado ao banco de dados")
     else:
         print("Falha ao conectar ao banco de dados")
