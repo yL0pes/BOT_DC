@@ -76,9 +76,17 @@ async def send_analysis_message(guild, user_id, user_name, division, user_id_fro
     analysis_channel = guild.get_channel(1337181666980134964)  # ID do canal de análise de transferência
     if analysis_channel:
         role = guild.get_role(DIVISION_ROLES[division])
+        
+        # Obter a divisão atual do usuário
+        current_division_role = None
+        for div, role_id in DIVISION_ROLES.items():
+            if guild.get_role(role_id) in guild.get_member(user_id).roles:
+                current_division_role = guild.get_role(role_id)
+                break
+
         embed = nextcord.Embed(
             title="📋 Solicitação de Transferência",
-            description=f"👤 **Nome:** {user_name}\n🌐 **Nova Divisão:** {role.mention}\n🆔 **ID:** {user_id_from_db}",
+            description=f"👤 **Nome:** {user_name}\n🌐 **Divisão Atual:** {current_division_role.mention if current_division_role else 'Nenhuma'}\n🌐 **Nova Divisão:** {role.mention}\n🆔 **ID:** {user_id_from_db}",
             color=nextcord.Color.blue()
         )
         embed.set_thumbnail(url=guild.get_member(user_id).avatar.url)
