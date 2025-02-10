@@ -162,7 +162,6 @@ def run_bot1():
     bot1.load_extension('curso')
     bot1.load_extension('carteira')
     bot1.load_extension('anunciar')
-
     bot1.run(TOKEN1)
 
 def run_bot2():
@@ -178,6 +177,7 @@ def run_bot2():
     print("Carregando cogs do bot2...")
     bot2.load_extension('cadastro')
     bot2.load_extension('transferencia')  # Carregar o cog transferencia
+    bot2.load_extension('up-down')  # Carregar o cog up-down
 
     print("Iniciando bot2...")
     bot2.run(TOKEN2)

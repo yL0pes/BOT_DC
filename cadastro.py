@@ -395,6 +395,15 @@ class AcceptButton(nextcord.ui.Button):
         else:
             await interaction.response.send_message("Você não tem permissão para aceitar registros.", ephemeral=True)
 
+        # Replace buttons with a disabled "SETADO" button
+        setado_button = nextcord.ui.Button(label="SETADO", style=nextcord.ButtonStyle.gray, disabled=True)
+        new_view = nextcord.ui.View(timeout=None)
+        new_view.add_item(setado_button)
+        try:
+            await interaction.message.edit(view=new_view)
+        except nextcord.errors.NotFound:
+            print("Mensagem não encontrada para edição.")
+
 class DenyReasonModal(nextcord.ui.Modal):
     def __init__(self, user_id, user_name, message):
         super().__init__(title="Motivo da Negação", timeout=None)
@@ -451,6 +460,15 @@ class DenyButton(nextcord.ui.Button):
             await interaction.response.send_modal(modal)
         else:
             await interaction.response.send_message("Você não tem permissão para negar registros.", ephemeral=True)
+
+        # Replace buttons with a disabled "SETADO" button
+        setado_button = nextcord.ui.Button(label="SETADO", style=nextcord.ButtonStyle.gray, disabled=True)
+        new_view = nextcord.ui.View(timeout=None)
+        new_view.add_item(setado_button)
+        try:
+            await interaction.message.edit(view=new_view)
+        except nextcord.errors.NotFound:
+            print("Mensagem não encontrada para edição.")
 
 class RegistrationButton(nextcord.ui.Button):
     def __init__(self):

@@ -54,6 +54,12 @@ class TransferDropdown(nextcord.ui.Select):
         user_id = interaction.user.id
         user_name = interaction.user.display_name
 
+        # Verificar se o usuário já pertence à divisão selecionada
+        current_division_role = get_current_division_role(interaction.guild, user_id)
+        if current_division_role and current_division_role.name == division:
+            await interaction.response.send_message("Você já pertence a essa divisão. Selecione uma divisão diferente.", ephemeral=True)
+            return
+
         db_connection = connect_db()
         cursor = db_connection.cursor()
         cursor.execute("UPDATE user_registrations SET division = %s WHERE discord_id = %s", (division, user_id))
@@ -72,21 +78,19 @@ class TransferDropdown(nextcord.ui.Select):
 
         await interaction.response.send_message("Divisão selecionada com sucesso! Sua solicitação de transferência foi enviada para análise.", ephemeral=True)
 
+def get_current_division_role(guild, user_id):
+    for div, role_id in DIVISION_ROLES.items():
+        if guild.get_role(role_id) in guild.get_member(user_id).roles:
+            return guild.get_role(role_id)
+    return None
+
 async def send_analysis_message(guild, user_id, user_name, division, user_id_from_db):
     analysis_channel = guild.get_channel(1337181666980134964)  # ID do canal de análise de transferência
     if analysis_channel:
         role = guild.get_role(DIVISION_ROLES[division])
-        
-        # Obter a divisão atual do usuário
-        current_division_role = None
-        for div, role_id in DIVISION_ROLES.items():
-            if guild.get_role(role_id) in guild.get_member(user_id).roles:
-                current_division_role = guild.get_role(role_id)
-                break
-
         embed = nextcord.Embed(
             title="📋 Solicitação de Transferência",
-            description=f"👤 **Nome:** {user_name}\n🌐 **Divisão Atual:** {current_division_role.mention if current_division_role else 'Nenhuma'}\n🌐 **Nova Divisão:** {role.mention}\n🆔 **ID:** {user_id_from_db}",
+            description=f"👤 **Nome:** {user_name}\n🌐 **Divisão Atual:** {get_current_division(guild, user_id)}\n🌐 **Nova Divisão:** {role.mention}\n🆔 **ID:** {user_id_from_db}",
             color=nextcord.Color.blue()
         )
         embed.set_thumbnail(url=guild.get_member(user_id).avatar.url)
@@ -99,6 +103,12 @@ async def send_analysis_message(guild, user_id, user_name, division, user_id_fro
         view.add_item(accept_button)
         view.add_item(deny_button)
         await analysis_channel.send(embed=embed, view=view)
+
+def get_current_division(guild, user_id):
+    for div, role_id in DIVISION_ROLES.items():
+        if guild.get_role(role_id) in guild.get_member(user_id).roles:
+            return guild.get_role(role_id).mention
+    return "Nenhuma"
 
 class AcceptTransferButton(nextcord.ui.Button):
     def __init__(self, user_id, user_name, division):
@@ -115,6 +125,15 @@ class AcceptTransferButton(nextcord.ui.Button):
             await interaction.response.send_message("Selecione a nova patente do usuário:", view=view, ephemeral=True)
         else:
             await interaction.response.send_message("Você não tem permissão para aceitar transferências.", ephemeral=True)
+
+        # Replace buttons with a disabled "TRANSFERIDO" button
+        transferido_button = nextcord.ui.Button(label="TRANSFERIDO", style=nextcord.ButtonStyle.gray, disabled=True)
+        new_view = nextcord.ui.View(timeout=None)
+        new_view.add_item(transferido_button)
+        try:
+            await interaction.message.edit(view=new_view)
+        except nextcord.errors.NotFound:
+            print("Mensagem não encontrada para edição.")
 
 class AcceptDropdown(nextcord.ui.Select):
     def __init__(self, user_id, user_name, division):
@@ -171,11 +190,19 @@ class AcceptDropdown(nextcord.ui.Select):
                     )
                     await log_channel.send(embed=log_embed)
 
-                await interaction.response.send_message("Transferência aceita com sucesso.", ephemeral=True)
+                # Enviar mensagem de confirmação
+                await interaction.response.send_message("Usuário transferido com sucesso.", ephemeral=True)
+
+                # Apagar todas as mensagens no canal de análise de transferência
+                analysis_channel = interaction.guild.get_channel(1337181666980134964)
+                if analysis_channel:
+                    async for message in analysis_channel.history(limit=100):
+                        if message.author == interaction.guild.me:
+                            await message.delete()
             else:
-                await interaction.response.send_message("Cargo ou divisão não encontrado.", ephemeral=True)
+                await interaction.followup.send("Cargo ou divisão não encontrado.", ephemeral=True)
         else:
-            await interaction.response.send_message("Usuário não encontrado.", ephemeral=True)
+            await interaction.followup.send("Usuário não encontrado.", ephemeral=True)
 
 async def update_nickname(user, specific_role, division):
     db_connection = connect_db()
@@ -190,6 +217,8 @@ async def update_nickname(user, specific_role, division):
     old_nickname = user.display_name
     if old_nickname.startswith("["):
         old_nickname = old_nickname.split("] ", 1)[-1]
+    if "|" in old_nickname:
+        old_nickname = old_nickname.split(" | ")[0]
     new_nickname = f"[{role_abbreviation}-{division}] {old_nickname} | {user_id_from_db}"
     if len(new_nickname) > 32:
         new_nickname = new_nickname[:32]
@@ -208,6 +237,15 @@ class DenyTransferButton(nextcord.ui.Button):
             await interaction.response.send_modal(modal)
         else:
             await interaction.response.send_message("Você não tem permissão para negar transferências.", ephemeral=True)
+
+        # Replace buttons with a disabled "TRANSFERIDO" button
+        transferido_button = nextcord.ui.Button(label="TRANSFERIDO", style=nextcord.ButtonStyle.gray, disabled=True)
+        new_view = nextcord.ui.View(timeout=None)
+        new_view.add_item(transferido_button)
+        try:
+            await interaction.message.edit(view=new_view)
+        except nextcord.errors.NotFound:
+            print("Mensagem não encontrada para edição.")
 
 class DenyTransferReasonModal(nextcord.ui.Modal):
     def __init__(self, user_id, user_name, message):
