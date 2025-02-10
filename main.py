@@ -178,6 +178,7 @@ def run_bot2():
     bot2.load_extension('cadastro')
     bot2.load_extension('transferencia')  # Carregar o cog transferencia
     bot2.load_extension('up-down')  # Carregar o cog up-down
+    bot2.load_extension('adv')
 
     print("Iniciando bot2...")
     bot2.run(TOKEN2)
