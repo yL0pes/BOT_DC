@@ -130,11 +130,17 @@ async def update_hierarchy_embed(bot):
     embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼", icon_url="https://media.discordapp.net/attachments/1315837031846510615/1337173243009695887/MEDALHA.png?ex=67a67b20&is=67a529a0&hm=bc89d25e10b6e1bced214a7fe8d1dc8dfa8bf00b2af0b16f887cd6926fffb4aa&=&format=webp&quality=lossless&width=644&height=644")  # Replace with your footer icon URL
     embed.set_author(name="Exército Brasileiro", icon_url="https://images-ext-1.discordapp.net/external/Xbl2tsWF7Uik6thCxWZuG-J-NWLuRow3NtM8PDwx75o/%3Fsize%3D4096/https/cdn.discordapp.com/icons/1315835915637096519/8b741f445cce536655560c41a783fbf9.png?format=webp&quality=lossless")  # Replace with your author icon URL
 
+    total_members = 0
+
     for role_id, role_name in role_ids.items():
         role = guild.get_role(role_id)
         if role:
             members = "\n".join([member.mention for member in role.members])
-            embed.add_field(name=role_name, value=members if members else "Nenhum membro", inline=False)
+            member_count = len(role.members)
+            total_members += member_count
+            embed.add_field(name=f"{role_name} ({member_count} membros)", value=members if members else "Nenhum membro", inline=False)
+
+    embed.add_field(name="Total de Membros", value=f"{total_members} membros", inline=False)
 
     # Delete previous embed messages
     async for message in channel.history(limit=10):
@@ -148,17 +154,6 @@ async def schedule_hierarchy_updates(bot):
         await update_hierarchy_embed(bot)
         await asyncio.sleep(1800)  # 30 minutes
 
-async def log_command_usage(bot, ctx, command_name):
-    log_channel = ctx.guild.get_channel(1338651796515590416)
-    if log_channel:
-        embed = nextcord.Embed(
-            title="📋 Comando Executado",
-            description=f"**Comando:** {command_name}\n**Usuário:** {ctx.author.mention}\n**Canal:** {ctx.channel.mention}",
-            color=nextcord.Color.blue()
-        )
-        embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
-        await log_channel.send(embed=embed)
-
 def run_bot1():
     bot1 = commands.Bot(command_prefix="!", intents=intents1)
 
@@ -167,10 +162,6 @@ def run_bot1():
         print(f'Bot 1 logado como {bot1.user}')
         await resend_commands(bot1)
         bot1.loop.create_task(schedule_hierarchy_updates(bot1))
-
-    @bot1.event
-    async def on_command(ctx):
-        await log_command_usage(bot1, ctx, ctx.command.name)
 
     # Carregar os cogs
     bot1.load_extension('acao')
@@ -187,10 +178,6 @@ def run_bot2():
         print(f'Bot 2 logado como {bot2.user}')
         await resend_commands_divisoes(bot2)
         bot2.loop.create_task(schedule_hierarchy_updates(bot2))
-
-    @bot2.event
-    async def on_command(ctx):
-        await log_command_usage(bot2, ctx, ctx.command.name)
 
     # Carregar os cogs
     print("Carregando cogs do bot2...")
