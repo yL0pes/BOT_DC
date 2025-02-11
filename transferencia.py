@@ -31,6 +31,40 @@ class TransferenciaCog(commands.Cog):
         view = TransferDropdownView()
         await channel.send(embed=embed, view=view)
 
+    async def log_transfer_request(self, interaction, division, user_id_from_db):
+        log_channel = interaction.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="📋 Solicitação de Transferência",
+                description=f"👤 **Nome:** {interaction.user.display_name}\n🌐 **Divisão Atual:** {get_current_division(interaction.guild, interaction.user.id)}\n🌐 **Nova Divisão:** {division}\n🆔 **ID:** {user_id_from_db}",
+                color=nextcord.Color.blue()
+            )
+            embed.set_thumbnail(url=interaction.user.avatar.url)
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            embed.add_field(name="📅 Data de Solicitação", value=f"{nextcord.utils.utcnow().strftime('%d/%m/%Y')}", inline=True)
+            embed.add_field(name="⏰ Hora de Solicitação", value=f"{nextcord.utils.utcnow().strftime('%H:%M:%S')}", inline=True)
+            await log_channel.send(embed=embed)
+
+    async def log_transfer_accept(self, interaction, user, division_role, specific_role_obj):
+        log_channel = interaction.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="Transferência de Divisão Aceita",
+                description=f"**Nome:** {user.display_name}\n**Nova Divisão:** {division_role.mention}\n**Nova Patente:** {specific_role_obj.mention}\n**Aceito por:** {interaction.user.mention}",
+                color=nextcord.Color.green()
+            )
+            await log_channel.send(embed=embed)
+
+    async def log_transfer_deny(self, interaction, user, reason):
+        log_channel = interaction.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="Transferência de Divisão Negada",
+                description=f"**Nome:** {user.display_name}\n**Motivo:** {reason}\n**Negado por:** {interaction.user.mention}",
+                color=nextcord.Color.red()
+            )
+            await log_channel.send(embed=embed)
+
 class TransferDropdownView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -77,6 +111,7 @@ class TransferDropdown(nextcord.ui.Select):
         await send_analysis_message(interaction.guild, user_id, user_name, division, user_id_from_db)
 
         await interaction.response.send_message("Divisão selecionada com sucesso! Sua solicitação de transferência foi enviada para análise.", ephemeral=True)
+        await self.log_transfer_request(interaction, division, user_id_from_db)
 
 def get_current_division_role(guild, user_id):
     for div, role_id in DIVISION_ROLES.items():
@@ -203,6 +238,7 @@ class AcceptDropdown(nextcord.ui.Select):
                 await interaction.followup.send("Cargo ou divisão não encontrado.", ephemeral=True)
         else:
             await interaction.followup.send("Usuário não encontrado.", ephemeral=True)
+        await self.log_transfer_accept(interaction, user, division_role, specific_role_obj)
 
 async def update_nickname(user, specific_role, division):
     db_connection = connect_db()
@@ -282,6 +318,7 @@ class DenyTransferReasonModal(nextcord.ui.Modal):
                 await interaction.response.send_message("Não foi possível enviar a mensagem privada ao usuário.", ephemeral=True)
         else:
             await interaction.response.send_message("Usuário não encontrado.", ephemeral=True)
+        await self.log_transfer_deny(interaction, user, reason)
 
 def connect_db():
     return mysql.connector.connect(

@@ -40,6 +40,7 @@ class UpDownCog(commands.Cog):
             await member.add_roles(new_role)
             await ctx.send(f"{member.mention} foi upado com sucesso!")
             await self.send_embed(ctx, member, "upado", reason, old_role, new_role_name)
+            await self.log_action(ctx, member, "upado", reason, old_role, new_role_name)
         else:
             await ctx.send(f"Cargo '{new_role_name}' não encontrado.")
 
@@ -74,6 +75,7 @@ class UpDownCog(commands.Cog):
             await member.add_roles(new_role)
             await ctx.send(f"{member.mention} foi rebaixado com sucesso!")
             await self.send_embed(ctx, member, "rebaixado", reason, old_role, new_role_name)
+            await self.log_action(ctx, member, "rebaixado", reason, old_role, new_role_name)
         else:
             await ctx.send(f"Cargo '{new_role_name}' não encontrado.")
 
@@ -99,6 +101,25 @@ class UpDownCog(commands.Cog):
 
         await channel.send(embed=embed)
         await self.update_nickname(member, new_role, division)
+
+    async def log_action(self, ctx, member, action, reason, old_role, new_role):
+        log_channel = ctx.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title=f"📋 {action.capitalize()}",
+                color=nextcord.Color.green() if action == "upado" else nextcord.Color.red()
+            )
+            embed.add_field(name="👤 Nome:", value=member.display_name, inline=True)
+            embed.add_field(name="🆔 ID:", value=member.id, inline=True)
+            embed.add_field(name="📌 Cargo Antigo:", value=old_role, inline=True)
+            embed.add_field(name="📌 Cargo Atual:", value=new_role, inline=True)
+            embed.add_field(name="👮 Autorizado por:", value=ctx.author.display_name, inline=True)
+            embed.add_field(name="📅 Data:", value=nextcord.utils.utcnow().strftime('%d/%m/%Y'), inline=True)
+            embed.add_field(name="⏰ Hora:", value=nextcord.utils.utcnow().strftime('%H:%M:%S'), inline=True)
+            embed.add_field(name="📝 Motivo:", value=reason, inline=False)
+            embed.set_thumbnail(url=member.avatar.url)
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
 
     def get_division(self, member):
         for div, role_id in DIVISION_ROLES.items():

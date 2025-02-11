@@ -148,6 +148,17 @@ async def schedule_hierarchy_updates(bot):
         await update_hierarchy_embed(bot)
         await asyncio.sleep(1800)  # 30 minutes
 
+async def log_command_usage(bot, ctx, command_name):
+    log_channel = ctx.guild.get_channel(1338651796515590416)
+    if log_channel:
+        embed = nextcord.Embed(
+            title="📋 Comando Executado",
+            description=f"**Comando:** {command_name}\n**Usuário:** {ctx.author.mention}\n**Canal:** {ctx.channel.mention}",
+            color=nextcord.Color.blue()
+        )
+        embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+        await log_channel.send(embed=embed)
+
 def run_bot1():
     bot1 = commands.Bot(command_prefix="!", intents=intents1)
 
@@ -156,6 +167,10 @@ def run_bot1():
         print(f'Bot 1 logado como {bot1.user}')
         await resend_commands(bot1)
         bot1.loop.create_task(schedule_hierarchy_updates(bot1))
+
+    @bot1.event
+    async def on_command(ctx):
+        await log_command_usage(bot1, ctx, ctx.command.name)
 
     # Carregar os cogs
     bot1.load_extension('acao')
@@ -172,6 +187,10 @@ def run_bot2():
         print(f'Bot 2 logado como {bot2.user}')
         await resend_commands_divisoes(bot2)
         bot2.loop.create_task(schedule_hierarchy_updates(bot2))
+
+    @bot2.event
+    async def on_command(ctx):
+        await log_command_usage(bot2, ctx, ctx.command.name)
 
     # Carregar os cogs
     print("Carregando cogs do bot2...")

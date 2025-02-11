@@ -32,6 +32,7 @@ class AdvCog(commands.Cog):
                 color=nextcord.Color.red()
             )
             await adv_channel.send(embed=embed)
+            await self.log_exonerar(ctx, member, "Recebeu 4 advertências")
             return
 
         next_adv_role = ADV_ROLES[len(current_adv_roles)]
@@ -46,6 +47,7 @@ class AdvCog(commands.Cog):
             color=nextcord.Color.orange()
         )
         await adv_channel.send(embed=embed)
+        await self.log_adv(ctx, member, days, reason)
 
     @commands.command(name="exonerar")
     @commands.has_role(AUTHORIZED_ROLE_ID)
@@ -59,6 +61,7 @@ class AdvCog(commands.Cog):
             color=nextcord.Color.red()
         )
         await exoneration_channel.send(embed=embed)
+        await self.log_exonerar(ctx, member, reason)
 
     @commands.command(name="readv")
     @commands.has_role(AUTHORIZED_ROLE_ID)
@@ -79,6 +82,37 @@ class AdvCog(commands.Cog):
             color=nextcord.Color.green()
         )
         await adv_channel.send(embed=embed)
+        await self.log_readv(ctx, member)
+
+    async def log_adv(self, ctx, member, days, reason):
+        log_channel = ctx.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="⚠️ Advertência Aplicada",
+                description=f"**Nome:** {member.mention}\n**ID:** {member.id}\n**Motivo ADV:** {reason}\n**ADV:** {len([role for role in member.roles if role.id in ADV_ROLES]) + 1}\n**Tempo restante para fim da Advertencia:** {days} dias\n**Quem aplicou:** {ctx.author.mention}",
+                color=nextcord.Color.orange()
+            )
+            await log_channel.send(embed=embed)
+
+    async def log_exonerar(self, ctx, member, reason):
+        log_channel = ctx.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="🚫 Usuário Expulso",
+                description=f"**Nome:** {member.mention}\n**ID:** {member.id}\n**Motivo Exoneração:** {reason}\n**Quem aplicou:** {ctx.author.mention}",
+                color=nextcord.Color.red()
+            )
+            await log_channel.send(embed=embed)
+
+    async def log_readv(self, ctx, member):
+        log_channel = ctx.guild.get_channel(1338651796515590416)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="✅ Advertência Revogada",
+                description=f"**Nome:** {member.mention}\n**ID:** {member.id}\n**Advertência Revogada:** {member.roles[-1].name}\n**Quem revogou:** {ctx.author.mention}",
+                color=nextcord.Color.green()
+            )
+            await log_channel.send(embed=embed)
 
     @tasks.loop(minutes=1)
     async def check_expirations(self):

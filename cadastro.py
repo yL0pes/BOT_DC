@@ -58,6 +58,7 @@ class CadastroCog(commands.Cog):
             response = "Nenhum ID salvo no banco de dados."
 
         await ctx.send(response)
+        await self.log_list_ids(ctx, rows)
 
     @commands.command()
     @commands.has_role(ADMIN_ROLE_ID)
@@ -78,20 +79,7 @@ class CadastroCog(commands.Cog):
         await member.edit(nick=None)
 
         await ctx.send(f"Verificação e registro do usuário {member.mention} foram resetados.")
-
-        # Log the reset action
-        log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
-        if log_channel:
-            embed = nextcord.Embed(
-                title="🔄 Reset de Usuário",
-                description=f"**Usuário:** {member.mention}\n**ID:** {member.id}",
-                color=nextcord.Color.orange()
-            )
-            embed.add_field(name="Ação", value="Reset de verificação e registro", inline=False)
-            embed.add_field(name="Executado por", value=ctx.author.mention, inline=True)
-            embed.add_field(name="Status", value="Concluído", inline=True)
-            embed.set_footer(text="Sistema de Logs")
-            await log_channel.send(embed=embed)
+        await self.log_reset(ctx, member)
 
     @commands.command()
     @commands.has_role(SUPER_ADMIN_ROLE_ID)
@@ -121,23 +109,52 @@ class CadastroCog(commands.Cog):
                     await asyncio.gather(*[member.edit(nick=None) for member in role.members])
 
                 await ctx.send("Todos os IDs foram resetados e os cargos foram removidos de todos os usuários.")
-
-                # Log the reset all action
-                log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
-                if log_channel:
-                    embed = nextcord.Embed(
-                        title="🔄 Reset de Todos os IDs",
-                        description="**Ação:** Reset de todos os IDs e remoção de cargos",
-                        color=nextcord.Color.red()
-                    )
-                    embed.add_field(name="Executado por", value=ctx.author.mention, inline=True)
-                    embed.add_field(name="Status", value="Concluído", inline=True)
-                    embed.set_footer(text="Sistema de Logs")
-                    await log_channel.send(embed=embed)
+                await self.log_reset_all_ids(ctx)
             else:
                 await ctx.send("Operação cancelada.")
         except asyncio.TimeoutError:
             await ctx.send("Tempo esgotado. Operação cancelada.")
+
+    async def log_list_ids(self, ctx, rows):
+        log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="📋 Lista de IDs",
+                description="IDs salvos no banco de dados:",
+                color=nextcord.Color.blue()
+            )
+            for row in rows:
+                embed.add_field(name="Discord ID", value=row[0], inline=True)
+                embed.add_field(name="User ID", value=row[1], inline=True)
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
+
+    async def log_reset(self, ctx, member):
+        log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="🔄 Reset de Usuário",
+                description=f"**Usuário:** {member.mention}\n**ID:** {member.id}",
+                color=nextcord.Color.orange()
+            )
+            embed.add_field(name="Ação", value="Reset de verificação e registro", inline=False)
+            embed.add_field(name="Executado por", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Status", value="Concluído", inline=True)
+            embed.set_footer(text="Sistema de Logs")
+            await log_channel.send(embed=embed)
+
+    async def log_reset_all_ids(self, ctx):
+        log_channel = ctx.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="🔄 Reset de Todos os IDs",
+                description="**Ação:** Reset de todos os IDs e remoção de cargos",
+                color=nextcord.Color.red()
+            )
+            embed.add_field(name="Executado por", value=ctx.author.mention, inline=True)
+            embed.add_field(name="Status", value="Concluído", inline=True)
+            embed.set_footer(text="Sistema de Logs")
+            await log_channel.send(embed=embed)
 
 async def purge_channels(bot):
     channel_ids = [1315844202856321134, 1333549238671380570, 1333549260704321617]
@@ -207,6 +224,18 @@ class VerificationModal(nextcord.ui.Modal):
 
         cursor.close()
         db_connection.close()
+        await self.log_verification(interaction, user_input)
+
+    async def log_verification(self, interaction, user_input):
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="✅ Verificação de ID",
+                description=f"**Usuário:** {interaction.user.mention}\n**ID:** {user_input}",
+                color=nextcord.Color.green()
+            )
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
 
 class RegistrationModal(nextcord.ui.Modal):
     def __init__(self):
@@ -244,6 +273,18 @@ class RegistrationModal(nextcord.ui.Modal):
             finally:
                 cursor.close()
                 db_connection.close()
+        await self.log_registration(interaction, user_name)
+
+    async def log_registration(self, interaction, user_name):
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="✅ Registro de Usuário",
+                description=f"**Usuário:** {interaction.user.mention}\n**Nome:** {user_name}",
+                color=nextcord.Color.green()
+            )
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
 
 async def delete_analysis_messages():
     await asyncio.sleep(10)  # Esperar 10 segundos antes de excluir as mensagens
@@ -317,6 +358,18 @@ class DivisionSelectView(nextcord.ui.View):
 
         await interaction.response.send_message("Divisão selecionada com sucesso! Seu registro foi enviado para análise.", ephemeral=True)
         bot2.loop.create_task(delete_analysis_messages())
+        await self.log_division_selection(interaction, division)
+
+    async def log_division_selection(self, interaction, division):
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="✅ Seleção de Divisão",
+                description=f"**Usuário:** {interaction.user.mention}\n**Divisão:** {division}",
+                color=nextcord.Color.green()
+            )
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
 
 class AcceptDropdown(nextcord.ui.Select):
     def __init__(self, user_id, user_name, division):
@@ -384,6 +437,18 @@ class AcceptDropdown(nextcord.ui.Select):
                 await interaction.response.send_message("Cargo ou divisão não encontrado.", ephemeral=True)
         else:
             await interaction.response.send_message("Usuário não encontrado.", ephemeral=True)
+        await self.log_accept(interaction, specific_role, self.division)
+
+    async def log_accept(self, interaction, specific_role, division):
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="✅ Aceitação de Registro",
+                description=f"**Usuário:** {interaction.user.mention}\n**Patente:** {specific_role}\n**Divisão:** {division}",
+                color=nextcord.Color.green()
+            )
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
 
 class AcceptButton(nextcord.ui.Button):
     def __init__(self, user_id, user_name, division):
@@ -452,6 +517,18 @@ class DenyReasonModal(nextcord.ui.Modal):
                 await interaction.response.send_message("Não foi possível enviar a mensagem privada ao usuário.", ephemeral=True)
         else:
             await interaction.response.send_message("Usuário não encontrado.", ephemeral=True)
+        await self.log_deny(interaction, reason)
+
+    async def log_deny(self, interaction, reason):
+        log_channel = interaction.guild.get_channel(LOG_CHANNEL_ID)
+        if log_channel:
+            embed = nextcord.Embed(
+                title="❌ Negação de Registro",
+                description=f"**Usuário:** {interaction.user.mention}\n**Motivo:** {reason}",
+                color=nextcord.Color.red()
+            )
+            embed.set_footer(text="Criado por - 𝓛𝓸𝓹𝓮𝓼")
+            await log_channel.send(embed=embed)
 
 class DenyButton(nextcord.ui.Button):
     def __init__(self, user_id, user_name, message):
