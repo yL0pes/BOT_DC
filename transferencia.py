@@ -11,7 +11,7 @@ class TransferenciaCog(commands.Cog):
 
     async def update_transfer_embed(self):
         print("TransferenciaCog: Atualizando embed de transferência.")
-        channel_id = 1337181666463977530  # ID do canal de solicitação de transferência
+        channel_id = 1333549260704321617  # ID do canal de solicitação de transferência
         channel = self.bot.get_channel(channel_id)
         if not channel:
             print(f"Channel with ID {channel_id} not found.")
@@ -85,7 +85,7 @@ def get_current_division_role(guild, user_id):
     return None
 
 async def send_analysis_message(guild, user_id, user_name, division, user_id_from_db):
-    analysis_channel = guild.get_channel(1337181666980134964)  # ID do canal de análise de transferência
+    analysis_channel = guild.get_channel(1333549959282163762)  # ID do canal de análise de transferência
     if analysis_channel:
         role = guild.get_role(DIVISION_ROLES[division])
         embed = nextcord.Embed(
@@ -181,7 +181,7 @@ class AcceptDropdown(nextcord.ui.Select):
                     print("Mensagem não encontrada para edição.")
 
                 # Enviar log no canal de logs
-                log_channel = interaction.guild.get_channel(1337181665545420827)  # ID do canal de logs
+                log_channel = interaction.guild.get_channel(1338651796515590416)  # ID do canal de logs
                 if log_channel:
                     log_embed = nextcord.Embed(
                         title="Transferência de Divisão Aceita",
@@ -194,7 +194,7 @@ class AcceptDropdown(nextcord.ui.Select):
                 await interaction.response.send_message("Usuário transferido com sucesso.", ephemeral=True)
 
                 # Apagar todas as mensagens no canal de análise de transferência
-                analysis_channel = interaction.guild.get_channel(1337181666980134964)
+                analysis_channel = interaction.guild.get_channel(1333549959282163762)
                 if analysis_channel:
                     async for message in analysis_channel.history(limit=100):
                         if message.author == interaction.guild.me:

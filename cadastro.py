@@ -15,12 +15,12 @@ DB_HOST = '172.93.104.61'
 DB_USER = 'u661_rRiE9itGnx'
 DB_PASSWORD = 'BgxrDebZCN0Uy!MBjd^1J!Wu'
 DB_NAME = 's661_cadastro_divisao'
-VERIFIED_ROLE_ID = 1337181664106778675  # Substitua pelo ID do cargo de verificado
-ADMIN_ROLE_ID = 1337181664693981217  # Substitua pelo ID do cargo de administrador para !reset e !list_ids
-SUPER_ADMIN_ROLE_ID = 1337181664693981220  # Substitua pelo ID do cargo de super administrador para !reset_all_ids
-ANALYSIS_CHANNEL_ID = 1337181666040483881  # Substitua pelo ID do canal de análise
-MEMBER_ROLE_ID = 1337181664190795807  # ID do cargo padrão "Membro"
-LOG_CHANNEL_ID = 1337181665545420827  # ID do canal de logs
+VERIFIED_ROLE_ID = 1333550578357243935  # Substitua pelo ID do cargo de verificado
+ADMIN_ROLE_ID = 1338650814545137774  # Substitua pelo ID do cargo de administrador para !reset e !list_ids
+SUPER_ADMIN_ROLE_ID = 1315839067220348940  # Substitua pelo ID do cargo de super administrador para !reset_all_ids
+ANALYSIS_CHANNEL_ID = 1333549250113441924  # Substitua pelo ID do canal de análise
+MEMBER_ROLE_ID = 1315843277429149696  # ID do cargo padrão "Membro"
+LOG_CHANNEL_ID = 1338651796515590416  # ID do canal de logs
 
 intents2 = nextcord.Intents.default()
 intents2.message_content = True
@@ -140,7 +140,7 @@ class CadastroCog(commands.Cog):
             await ctx.send("Tempo esgotado. Operação cancelada.")
 
 async def purge_channels(bot):
-    channel_ids = [1337181665545420826, 1337181666040483880, 1337181666463977530]
+    channel_ids = [1315844202856321134, 1333549238671380570, 1333549260704321617]
     for channel_id in channel_ids:
         channel = bot.get_channel(channel_id)
         if (channel):
@@ -228,16 +228,22 @@ class RegistrationModal(nextcord.ui.Modal):
         db_connection = connect_db()
         cursor = db_connection.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS user_registrations (discord_id BIGINT PRIMARY KEY, user_name VARCHAR(255), division VARCHAR(255))")
-        try:
-            cursor.execute("INSERT INTO user_registrations (discord_id, user_name) VALUES (%s, %s)", (user_id, user_name))
-            db_connection.commit()
-            await interaction.response.send_message("Nome salvo com sucesso! Agora, selecione sua divisão.", ephemeral=True)
-            await interaction.followup.send(content="Selecione sua divisão:", view=DivisionSelectView(user_id, user_name), ephemeral=True)
-        except mysql.connector.errors.IntegrityError:
+        cursor.execute("SELECT * FROM user_registrations WHERE discord_id = %s", (user_id,))
+        result = cursor.fetchone()
+
+        if result:
             await interaction.response.send_message("Você já está registrado!", ephemeral=True)
-        finally:
-            cursor.close()
-            db_connection.close()
+        else:
+            try:
+                cursor.execute("INSERT INTO user_registrations (discord_id, user_name) VALUES (%s, %s)", (user_id, user_name))
+                db_connection.commit()
+                await interaction.response.send_message("Nome salvo com sucesso! Agora, selecione sua divisão.", ephemeral=True)
+                await interaction.followup.send(content="Selecione sua divisão:", view=DivisionSelectView(user_id, user_name), ephemeral=True)
+            except mysql.connector.errors.IntegrityError:
+                await interaction.response.send_message("Você já está registrado!", ephemeral=True)
+            finally:
+                cursor.close()
+                db_connection.close()
 
 async def delete_analysis_messages():
     await asyncio.sleep(10)  # Esperar 10 segundos antes de excluir as mensagens
@@ -490,8 +496,8 @@ async def schedule_embed_updates(bot):
     while True:
         verify_button = VerificationButton()
         register_button = RegistrationButton()
-        await update_embed(bot, 1337181665545420826, "Verificação", "Clique no botão abaixo para verificar seu ID.", nextcord.Color.green(), "verificacao", verify_button)
-        await update_embed(bot, 1337181666040483880, "Registro de Usuário", "Clique no botão abaixo para iniciar o registro.", nextcord.Color.blue(), "registro", register_button)
+        await update_embed(bot, 1315844202856321134, "Verificação", "Clique no botão abaixo para verificar seu ID.", nextcord.Color.green(), "verificacao", verify_button)
+        await update_embed(bot, 1333549238671380570, "Registro de Usuário", "Clique no botão abaixo para iniciar o registro.", nextcord.Color.blue(), "registro", register_button)
         await bot.get_cog("TransferenciaCog").update_transfer_embed()  # Chame a função do cog
         await asyncio.sleep(3600)  # 1 hour
 

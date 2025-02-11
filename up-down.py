@@ -3,7 +3,7 @@ from nextcord.ext import commands
 from config import DIVISION_ROLES, ROLE_ABBREVIATIONS, DIVISION_SPECIFIC_ROLES
 import mysql.connector
 
-AUTHORIZED_ROLE_ID = 1338567039626772551  # Substitua pelo ID do cargo autorizado
+AUTHORIZED_ROLE_ID = 1338650814545137774  # Substitua pelo ID do cargo autorizado
 
 class UpDownCog(commands.Cog):
     def __init__(self, bot):
@@ -79,7 +79,7 @@ class UpDownCog(commands.Cog):
 
     async def send_embed(self, ctx, member, action, reason, old_role, new_role):
         division = self.get_division(member)
-        channel_id = 1337181666463977529 if action == "upado" else 1337181666463977531
+        channel_id = 1315845308894281839 if action == "upado" else 1315845427706204261
         channel = ctx.guild.get_channel(channel_id)
 
         embed = nextcord.Embed(
